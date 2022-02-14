@@ -24,13 +24,15 @@ def rename_last_downloaded_file(dummy_dir, destination_dir, new_file_name):
         return max([dummy_dir+"/"+f for f in os.listdir(dummy_dir)], key=os.path.getctime)
 
     while '.part' in get_last_downloaded_file_path(dummy_dir):
-        time.sleep(1)
+        time.sleep(2)
     shutil.move(get_last_downloaded_file_path(dummy_dir), destination_dir+"/"+new_file_name)
 
 API_URL ="https://hulms.instructure.com"
 API_KEY = input("Enter API Access token key:\n")
+# API_KEY = "17361~Mqdn4rB8xG24lXim7kwhCXcpcsQqgSpsBlC4Sv6bJWJtK2QSMQn34GN4SA1cHb7n"
 canvas = Canvas(API_URL, API_KEY)
 courseUrl = input("Enter course URL:\n")
+# courseUrl="https://hulms.instructure.com/courses/1282"
 dummypath = "C:/Users/fizza/Documents/dummy"
 if not os.path.exists(dummypath):
     os.mkdir(dummypath)
@@ -55,7 +57,6 @@ profile = {'printing.print_preview_sticky_settings.appState': json.dumps(appStat
 chrome_options = webdriver.ChromeOptions()
 chrome_options.add_experimental_option('prefs', profile)
 chrome_options.add_argument('--kiosk-printing')
-# chrome_options.add_argument('--headless')
 driver = webdriver.Chrome(options=chrome_options, executable_path="C:\chromedriver_win32\chromedriver.exe")
 driver.get("https://hulms.instructure.com/")
 element = WebDriverWait(driver, 2000).until(
@@ -106,15 +107,10 @@ quizzes = course.get_quizzes()
 for q in quizzes:
     url = (q.__dict__)["html_url"]
     url+="/read_only"
-    # try:
     driver.get(url)
     driver.execute_script("document.getElementById('questions').classList.remove('brief');")
-    # time.sleep(1)  
     driver.execute_script("window.print();")
     rename_last_downloaded_file(dummypath, quizzespath+'/', str((q.__dict__)["title"])+'.pdf')
-    # except Exception as why:
-    #     sys.stderr.write('Chromedriver Error: {}\n'.format(why))
-    #     raise
 
 print("[-] Quizzes Preview done")
 
@@ -180,13 +176,14 @@ for q in quizzes:
         raise
 print("[-] Quizzes 3 Graded Assessments are done")
 
-# # #  Get read only copy for an assignments
+# Get read only copy for an assignments
 assignpath = path + "/g. Copy of assignment,Quizzes, Midterm and Final Examination/Assignments"
 os.mkdir(assignpath)
 assigns = course.get_assignments()  
 
 for i in assigns:
     if i.__dict__["is_quiz_assignment"]==False:
+        print(i)
         url = i.__dict__["html_url"]
         t = str(i.__dict__["name"]) + '.pdf'
         t = t.replace(":", "")
@@ -201,11 +198,10 @@ for i in assigns:
             raise
 print("[-] Assignments Preview Copies Done")        
 
-# # #  Get 3 submissions for each assignments
+# Get 3 submissions for each assignments
 assignsubmissionspath = path + "/i. Three sample graded assignments, quizzes, midterms and final examination securing max, min and average marks/Assignments"
 os.mkdir(assignsubmissionspath)
 for a in assigns:
-    # print(a.__dict__)
     if ((not a.__dict__['is_quiz_assignment'])) or ("none" not in a.__dict__['submission_types']):
         submissions = a.get_submissions()
         s = [x for x in submissions if x.score!=None]
@@ -235,13 +231,14 @@ for a in assigns:
                     raise
             elif subs[count].__dict__["submission_type"]=="online_upload":
                 attachments = subs[count].__dict__["attachments"]
+                print(attachments)
                 for j in attachments:
                     url = j["url"]
                     r = requests.get(url, allow_redirects=True)
-                    open(subsname + "- " +str((a.__dict__)["name"]) + "-" + j["filename"], 'wb').write(r.content)
+                    open(assignsubmissionspath+"/"+subsname[count] + "- " +str((a.__dict__)["name"]) + "-" + j["filename"], 'wb').write(r.content)
 
 print("[-] Assignment graded assessments are done")                
-# # Make an empty folder for model solutions of assignments - To be added by instructor
+# Make an empty folder for model solutions of assignments - To be added by instructor
 assignmodelpath = path + "/h. Model solutions of all assessments tests given in previous section/Assignments"
 os.mkdir(assignmodelpath)
 
