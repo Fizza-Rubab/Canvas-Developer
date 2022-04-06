@@ -1,74 +1,238 @@
-# Canvas Development - Generating Course Files
+\PassOptionsToPackage{unicode=true}{hyperref} % options for packages loaded elsewhere
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provides euro and other symbols
+\else % if luatex or xelatex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+% use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\hypersetup{
+  pdfborder={0 0 0},
+  breaklinks=true}
+\urlstyle{same}  % don't use monospace font for urls
+\setlength{\emergencystretch}{3em}  % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-2}
+% Redefines (sub)paragraphs to behave more like sections
+\ifx\paragraph\undefined\else
+  \let\oldparagraph\paragraph
+  \renewcommand{\paragraph}[1]{\oldparagraph{#1}\mbox{}}
+\fi
+\ifx\subparagraph\undefined\else
+  \let\oldsubparagraph\subparagraph
+  \renewcommand{\subparagraph}[1]{\oldsubparagraph{#1}\mbox{}}
+\fi
 
-This tool downloads material from your Canvas course site. Specifically, it looks in the 'Assignments', 'Quizzes', and 'Disussions' sections of the course site.
+% set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
 
-## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for generating the course files.
+\date{}
 
-### Prerequisites
+\begin{document}
 
-Functional requirements include Python 3.x and `pip` (Python package manager) as well as Google Chrome (any recent version) installed on your machine before hand. 
+\hypertarget{canvas-development---generating-course-files}{%
+\section{Canvas Development - Generating Course
+Files}\label{canvas-development---generating-course-files}}
+
+This tool downloads material from your Canvas course site. Specifically,
+it looks in the `Assignments', `Quizzes', and `Disussions' sections of
+the course site.
+
+\hypertarget{getting-started}{%
+\subsection{Getting Started}\label{getting-started}}
+
+These instructions will get you a copy of the project up and running on
+your local machine for generating the course files.
+
+\hypertarget{prerequisites}{%
+\subsubsection{Prerequisites}\label{prerequisites}}
+
+Functional requirements include Python 3.x and \texttt{pip} (Python
+package manager) as well as Google Chrome (any recent version) installed
+on your machine before hand.
 
 These are the python packages you would need before running the script.
 
-- canvasapi
-- webdriver-manager
-- selenium
-- selenium-wire
+\begin{itemize}
+\tightlist
+\item
+  canvasapi
+\item
+  webdriver-manager
+\item
+  selenium
+\item
+  selenium-wire
+\end{itemize}
 
-Download these modules by running one of the following commands on the command line depending on your platform.
+Download these modules by running one of the following commands on the
+command line depending on your platform.
 
-Windows: `pip install <package-name>`
+Windows: \texttt{pip\ install\ \textless{}package-name\textgreater{}}
 
-*nix: `pip3 install <package-name>`
+*nix: \texttt{pip3\ install\ \textless{}package-name\textgreater{}}
 
-### Retrieving the Access Token:
-To run the python file `coursefiles.py` and generate course files, a canvas access token is required.
+\hypertarget{retrieving-the-access-token}{%
+\subsubsection{Retrieving the Access
+Token:}\label{retrieving-the-access-token}}
 
-1. In Canvas, go to Account (top left) -> Settings.
-1. On the Settings page, click on "+ New Access Token" button under the "Approved Integrations" section.
-1. Enter the Purpose, "Automatic Course File", and leave the expiry date blank. Click on "Generate Token".
-1. A token appears as a long string of characters in the next window. Copy it and paste it to a text editor. This has to be given to the program as an input.
+To run the python file \texttt{coursefiles.py} and generate course
+files, a canvas access token is required.
 
-## Additional Material
-The tool can download certain folders from the Files section of the site if they are named as follows.
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  In Canvas, go to Account (top left) -\textgreater{} Settings.
+\item
+  On the Settings page, click on ``+ New Access Token'' button under the
+  ``Approved Integrations'' section.
+\item
+  Enter the Purpose, ``Automatic Course File'', and leave the expiry
+  date blank. Click on ``Generate Token''.
+\item
+  A token appears as a long string of characters in the next window.
+  Copy it and paste it to a text editor. This has to be given to the
+  program as an input.
+\end{enumerate}
 
-1. "syllabus.pdf": this file, if found, gets copied to the "Course Syllabus" sub-directory in the output folder
-1. "Slides/": the contents of this folder, if found, are copied to the "Lecture Notes" sub-directory in the output folder
-1. "Assignments/": the contents of this folder, if found, are copied to the "Assessments and Sample solutions/Assignment Copies/" sub-directory in the output folder
-1. "Assignment Solutions/": the contents of this folder, if found, are copied to the "Assessments and Sample solutions/Model Assignment Solutions/" sub-directory in the output folder
+\hypertarget{additional-material}{%
+\subsection{Additional Material}\label{additional-material}}
 
-## Running the file
+The tool can download certain folders from the Files section of the site
+if they are named as follows.
 
-Before running the program, ensure that you have a strong and stable Internet connection. Run the `coursefiles.py` python file from the command line as follows depending on your platform.
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  ``syllabus.pdf'': this file, if found, gets copied to the ``Course
+  Syllabus'' sub-directory in the output folder
+\item
+  ``Slides/'': the contents of this folder, if found, are copied to the
+  ``Lecture Notes'' sub-directory in the output folder
+\item
+  ``Assignments/'': the contents of this folder, if found, are copied to
+  the ``Assessments and Sample solutions/Assignment Copies/''
+  sub-directory in the output folder
+\item
+  ``Assignment Solutions/'': the contents of this folder, if found, are
+  copied to the ``Assessments and Sample solutions/Model Assignment
+  Solutions/'' sub-directory in the output folder
+\end{enumerate}
 
-Windows: `python coursefiles.py`
+\hypertarget{running-the-file}{%
+\subsection{Running the file}\label{running-the-file}}
 
-*nix:  `python3 coursefiles.py`
+Before running the program, ensure that you have a strong and stable
+Internet connection. Run the \texttt{coursefiles.py} python file from
+the command line as follows depending on your platform.
 
-You will then be asked for certain inputs:
-1. Your access token: This is the token that you generated above. Please copy it here from your text editor where you had pasted it.
-1. Your course url: This is the URL of the Canvas site of the course whose course file you want to generate. It is of the form: https://hulms.instructure.com/courses/<course-number>. You can copy-paste it from your browser.
+Windows: \texttt{python\ coursefiles.py}
 
-A new Google Chrome window will now open and you will be redirected to the the Habib University's main LMS page. Please log in here to initiate the download process.
+*nix: \texttt{python3\ coursefiles.py}
 
-AS the program runs, various pages will automatically load and get downloaded in this Google Chrome window. You can safely ignore the winow, but take care to _NOT_ close it yet. The console from where you ran the command will show the progress. The download takes some time and the Google Chrome window closes automatically once the download is complete. You can now find the "coursefiles" folder of the same name as your course in the working directory.
+You will then be asked for certain inputs: 1. Your access token: This is
+the token that you generated above. Please copy it here from your text
+editor where you had pasted it. 1. Your course url: This is the URL of
+the Canvas site of the course whose course file you want to generate. It
+is of the form: https://hulms.instructure.com/courses/. You can
+copy-paste it from your browser.
 
-## Important Instructions
-1. Do not close the browser window during execution. It might come to the foreground repeatedly due to page reloads. If som dock it to the background.
-1. The tool only works for an ongoing course.
+A new Google Chrome window will now open and you will be redirected to
+the the Habib University's main LMS page. Please log in here to initiate
+the download process.
 
-## Error Instructions
-Any error during the download process can be identified through the following:
+AS the program runs, various pages will automatically load and get
+downloaded in this Google Chrome window. You can safely ignore the
+winow, but take care to \emph{NOT} close it yet. The console from where
+you ran the command will show the progress. The download takes some time
+and the Google Chrome window closes automatically once the download is
+complete. You can now find the ``coursefiles'' folder of the same name
+as your course in the working directory.
 
-1. The console gives some error message instead of the usual progress logs.
-1. The browser window becomes idle for a very long time. This error will be reflected in the console.
-1. The produced folder has missing items.
-1. The pdfs are generated incorrectly.
+\hypertarget{important-instructions}{%
+\subsection{Important Instructions}\label{important-instructions}}
 
-Kindly take a screenshot of the console error message on the console, a screenshot of the browser window and a breif error description and mail it to `fr06161@st.habib.edu.pk`. 
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Do not close the browser window during execution. It might come to the
+  foreground repeatedly due to page reloads. If som dock it to the
+  background.
+\item
+  The tool only works for an ongoing course.
+\end{enumerate}
 
-# Code
+\hypertarget{error-instructions}{%
+\subsection{Error Instructions}\label{error-instructions}}
 
-The entire code is available in the file `coursefiles.py` which you have to run. You can find the latest version online at: https://github.com/Fizza-Rubab/Canvas-Developer . Contributions are welcome!
+Any error during the download process can be identified through the
+following:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  The console gives some error message instead of the usual progress
+  logs.
+\item
+  The browser window becomes idle for a very long time. This error will
+  be reflected in the console.
+\item
+  The produced folder has missing items.
+\item
+  The pdfs are generated incorrectly.
+\end{enumerate}
+
+Kindly take a screenshot of the console error message on the console, a
+screenshot of the browser window and a breif error description and mail
+it to \texttt{fr06161@st.habib.edu.pk}.
+
+\hypertarget{code}{%
+\section{Code}\label{code}}
+
+The entire code is available in the file \texttt{coursefiles.py} which
+you have to run. You can find the latest version online at:
+https://github.com/Fizza-Rubab/Canvas-Developer . Contributions are
+welcome!
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
