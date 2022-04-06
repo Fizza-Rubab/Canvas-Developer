@@ -169,12 +169,16 @@ quizzes = course.get_quizzes()
 for q in quizzes:
     url = (q.__dict__)["html_url"]
     url+="/read_only"
-    driver.get(url)
-    driver.execute_script("document.getElementById('questions').classList.remove('brief');")
-    time.sleep(2)
-    fn = sanitize(str((q.__dict__)["title"]))
-    driver.execute_script("window.print();")
-    rename_last_downloaded_file(dummypath, quizzespath+'/', fn +'.pdf')
+    try:
+        driver.get(url)
+        driver.execute_script("document.getElementById('questions').classList.remove('brief');")
+        time.sleep(2)
+        fn = sanitize(str((q.__dict__)["title"]))
+        driver.execute_script("window.print();")
+        rename_last_downloaded_file(dummypath, quizzespath+'/', fn +'.pdf')
+    except Exception as why:
+        sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+        continue
 
 print("[-] Quizzes Preview done")
 
@@ -196,7 +200,7 @@ for q in quizzes:
         rename_last_downloaded_file(dummypath, quizzesmodelpath+'/', fn +'-solution.pdf')
     except Exception as why:
         sys.stderr.write('Chromedriver Error: {}\n'.format(why))
-        raise
+        continue
 print("[-] Quizzes Model Solution is done")
 
 # # Get 3 sample graded student submissions of each quiz
@@ -213,15 +217,12 @@ for q in quizzes:
     #  Fetching file uploads    
     if attachments:
         if "speed_grader_url" in q.__dict__.keys():
-            if q.__dict__["speed_grader_url"] is not None:
-                # print(q.__dict__)
-                # print(q.__dict__["speed_grader_url"])                
+            if q.__dict__["speed_grader_url"] is not None:             
                 qassignIDindex = q.__dict__["speed_grader_url"][::-1].index("=")
                 qassignID = int(q.__dict__["speed_grader_url"][len(q.__dict__["speed_grader_url"])-qassignIDindex:])
                 a = (course.get_assignment(qassignID))
                 r =requests.get("https://hulms.instructure.com/api/v1/courses/" + str(courseID) + "/assignments/"+str(qassignID)+"/submissions?include[]=submission_history", headers=headers)
                 submissions = r.json()
-                # print("SUBMISSIONS", submissions)
                 s = sorted([i for i in submissions if i['score']!=None], key=lambda d: d['score'])
                 if s==[]:
                     continue
@@ -325,7 +326,6 @@ assigns = course.get_assignments()
 for i in assigns:
     print(i.__dict__)
     if i.__dict__["is_quiz_assignment"]==False and "online_quiz" not in i.__dict__["submission_types"] and "external_tool" not in i.__dict__["submission_types"]:
-        # print(i)
         url = i.__dict__["html_url"]
         t = sanitize(str(i.__dict__["name"]))
         t+='.pdf'
@@ -446,7 +446,6 @@ for a in assigns:
                     c+=1
                 c = 0
                 try:
-                    # urlstr = "https://hulms.instructure.com/courses/1923/gradebook/speed_grader?assignment_id=" + str(subs[count].__dict__["assignment_id"])+"&student_id=" + str(subs[count].__dict__["user_id"])
                     print(subs[count].__dict__["preview_url"])
                     print(subs[count].__dict__["preview_url"].find("?preview"))
                     urlstr = subs[count].__dict__["preview_url"][:subs[count].__dict__["preview_url"].find("?preview")]

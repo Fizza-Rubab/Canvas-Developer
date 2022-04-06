@@ -1,6 +1,6 @@
 # Canvas Development - Generating Course Files
 
-One Paragraph of project description goes here
+This tool downloads material from your Canvas course site. Specifically, it looks in the 'Assignments', 'Quizzes', and 'Disussions' sections of the course site.
 
 ## Getting Started
 
@@ -8,7 +8,7 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Prerequisites
 
-Functional requirements include Python 3.x and pip (Python package manager) as well as Google Chrome(any recent version) installed on your machine before hand. 
+Functional requirements include Python 3.x and `pip` (Python package manager) as well as Google Chrome(any recent version) installed on your machine before hand. 
 
 These are the python packages you would need before running the script.
 - canvasapi
@@ -16,21 +16,29 @@ These are the python packages you would need before running the script.
 - selenium
 - selenium-wire
 
-Download these modules by doing
+Download these modules by running one of the following commands on the command line depending on your platform.
+Windows:
 ```
 pip install <package-name>
 ```
-
+*nix:
+```
+pip3 install <package-name>
+```
 
 ### Retrieving the Access Token:
-To run the python file`coursefiles.py` and generate course files, a canvas access token is required. Go to your account settings and click on new access token button in the Approved Integrations section. Give any name, set the date and time as you wish and save the provided token value somwehere. This has to be given to the program as an input.
+To run the python file `coursefiles.py` and generate course files, a canvas access token is required.
+1. In Canvas, go to Account (top left) -> Settings.
+1. On the Settings page, click on "+ New Access Token" button under the "Approved Integrations" section.
+1. Enter the Purpose, "Automatic Course File", and leave the expiry date blank. Click on "Generate Token".
+1. A token appears as a long string of characters in the next window. Copy it and paste it to a text editor. This has to be given to the program as an input.
 
 ## Canvas Settings
-Prior to running the tool, your canvas course site should meet the following requirements.
-1. Ensure that the syllabus is named as `syllabus.pdf`
-2. Ensure that the folder containing slides or lecture notes is named as `Slides`
-3. Ensure that the folder containing assignment pdfs is named as `Assignments`
-4. Ensure that the folder containing assignment solutions is named as `Assignment Solutions`
+The tool can download certain folders from the Files section of the site if they are named as follows.
+1. "syllabus.pdf": this gets copied to the "Course Syllabus" in the output folder
+2. Ensure that the folder containing slides or lecture notes is named as "Slides"
+3. Ensure that the folder containing assignment pdfs is named as "Assignments"
+4. Ensure that the folder containing assignment solutions is named as "Assignment Solutions"
 
 ## Running the file
 
