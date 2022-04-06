@@ -69,3 +69,6 @@ Any error during the download process can be identified through the following:
 
 Kindly take a screenshot of the console error message on the console, a screenshot of the browser window and a breif error description and mail it to `fr06161@st.habib.edu.pk`. 
 
+# Code
+
+The entire code is available in the file `coursefiles.py` which you have to run. You can find the latest version online at: https://github.com/Fizza-Rubab/Canvas-Developer . Contributions are welcome!
