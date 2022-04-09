@@ -71,3 +71,14 @@ None Yet
 
 ### Issues Raised
 None Yet
+
+
+## Feb 3 to March 10
+
+### Tasks Accomplished
+1. Fixing path issues
+2. Downloading embedded file uploads
+3. Testing on different courses.
+
+### Issues Raised
+None Yet
