@@ -24,7 +24,6 @@ def rename_last_downloaded_file(dummy_dir, destination_dir, new_file_name):
         while not os.listdir(dummy_dir):
             time.sleep(3)
         s = max([dummy_dir+"/"+f for f in os.listdir(dummy_dir)], key=os.path.getctime)
-        print(s)
         return s
 
     while '.part' in get_last_downloaded_file_path(dummy_dir):
@@ -136,7 +135,6 @@ if lectureFolder is not None:
     files_url = lectureFolder.__dict__["files_url"]
     r =requests.get(files_url, headers=headers)
     filesdata = json.loads(r.text)
-    
     for f in filesdata:
         response = requests.get(f["url"], allow_redirects=True)
         fn = sanitize(f["filename"])
@@ -238,10 +236,8 @@ for q in quizzes:
                 averagesub = min(s, key=lambda x:abs(x["score"]-average))
                 if len(s)>2:
                     if averagesub==lowestsub and averagesub!=highestsub:
-                        print(averagesub, lowestsub)
                         averagesub = s[1]
                     elif averagesub!=lowestsub and averagesub==highestsub:
-                        print(averagesub, highestsub)
                         averagesub = s[-2]
                     flag = False
                 currentquizsubmissionspath = quizsubmissionspath + "/" + fn
@@ -252,7 +248,6 @@ for q in quizzes:
                 subsnameattach = ["min-attachment", "max-attachment", "avg-attachment"]
                 for count in range(3):
                     submissionData = subs[count]["submission_history"][-1]["submission_data"]
-                    print(submissionData)
                     attachedFiles = []
                     for k in submissionData:
                         if "attachment_ids" in k.keys():
@@ -264,12 +259,16 @@ for q in quizzes:
                         extname = str(filee)[len(str(filee))-Index:]
                         filee.download(currentquizsubmissionspath + "/" + fn + "-" +subsnameattach[count]+"-" + str(it) + "." + extname)
                         it+=1
-                    url = "https://hulms.instructure.com/courses/" + str(courseID) + "/gradebook/speed_grader?assignment_id=" + str(subs[count]["assignment_id"]) + "&student_id=" + str(subs[count]["user_id"])
-                    driver.get(url)
-                    time.sleep(2.5)  
-                    driver.execute_script("window.print();")
-                    time.sleep(0.5)
-                    rename_last_downloaded_file(dummypath, currentquizsubmissionspath+'/', fn + subsname[count]+'.pdf')
+                    try:
+                        url = "https://hulms.instructure.com/courses/" + str(courseID) + "/gradebook/speed_grader?assignment_id=" + str(subs[count]["assignment_id"]) + "&student_id=" + str(subs[count]["user_id"])
+                        driver.get(url)
+                        time.sleep(2.5)  
+                        driver.execute_script("window.print();")
+                        time.sleep(0.5)
+                        rename_last_downloaded_file(dummypath, currentquizsubmissionspath+'/', fn + subsname[count]+'.pdf')
+                    except Exception as why:
+                        sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+                        continue
     else:
         submissions = q.get_submissions()
         s = sorted([i for i in submissions if i.score!=None], key=lambda d: d.__dict__['score'])
@@ -287,13 +286,10 @@ for q in quizzes:
         averagesub = min(s, key=lambda x:abs(x.score-average))
         if len(s)>2:
             if averagesub==lowestsub and averagesub!=highestsub:
-                print(averagesub, lowestsub)
                 averagesub = s[1]
             elif averagesub!=lowestsub and averagesub==highestsub:
-                print(averagesub, highestsub)
                 averagesub = s[-2]
             flag = False
-        print(lowestsub.__dict__)
         currentquizsubmissionspath = quizsubmissionspath + "/" + fn
         os.makedirs(currentquizsubmissionspath)
         time.sleep(1.5)
@@ -316,7 +312,7 @@ for q in quizzes:
             rename_last_downloaded_file(dummypath, currentquizsubmissionspath+'/',fn +'-avg.pdf')
         except Exception as why:
             sys.stderr.write('Chromedriver Error: {}\n'.format(why))
-            raise
+            continue
 print("[-] Quizzes 3 Graded Assessments are done")
 
 # Get read only copy for an assignments
@@ -324,7 +320,6 @@ assignpath = path+"/Assessments and Sample Solutions/Assignment Copies"
 assigns = course.get_assignments()  
 
 for i in assigns:
-    print(i.__dict__)
     if i.__dict__["is_quiz_assignment"]==False and "online_quiz" not in i.__dict__["submission_types"] and "external_tool" not in i.__dict__["submission_types"]:
         url = i.__dict__["html_url"]
         t = sanitize(str(i.__dict__["name"]))
@@ -337,7 +332,7 @@ for i in assigns:
             rename_last_downloaded_file(dummypath, assignpath+'/', t)
         except Exception as why:
             sys.stderr.write('Chromedriver Error: {}\n'.format(why))
-            raise       
+            continue       
 print("[-] Assignments Preview Copies Done")        
 
 # # Get 3 submissions for each assignments
@@ -377,16 +372,10 @@ for a in assigns:
                 time.sleep(1.5)
         except Exception as why:
                 sys.stderr.write('Path creation: {}\n'.format(why))
-                raise
-
-        print(currentassignsubmissionspath)
-        print("path made")
+                continue
         for count in range(3):
-            print(subs[count].__dict__)
             if subs[count].__dict__["submission_type"]=="online_text_entry":
                 try:
-                    print(subs[count].__dict__["preview_url"])
-                    print(subs[count].__dict__["preview_url"].find("?preview"))
                     urlstr = subs[count].__dict__["preview_url"][:subs[count].__dict__["preview_url"].find("?preview")]
                     driver.get(urlstr)
                     time.sleep(1)
@@ -407,10 +396,9 @@ for a in assigns:
 
                 except Exception as why:
                     sys.stderr.write('Chromedriver Error: {}\n'.format(why))
-                    raise
+                    continue
             elif subs[count].__dict__["submission_type"]=="discussion_topic":
                 try:
-                    print()
                     driver.get(subs[count].__dict__["preview_url"])
                     time.sleep(1)  
                     driver.execute_script("window.print();")
@@ -418,7 +406,7 @@ for a in assigns:
                     rename_last_downloaded_file(dummypath, currentassignsubmissionspath +'/', aname+'-'+subsname[count]+'.pdf')
                 except Exception as why:
                     sys.stderr.write('Chromedriver Error: {}\n'.format(why))
-                    raise
+                    continue
             elif subs[count].__dict__["submission_type"]=="online_upload":
                 attachments = subs[count].__dict__["attachments"]
                 c = 1
@@ -446,8 +434,6 @@ for a in assigns:
                     c+=1
                 c = 0
                 try:
-                    print(subs[count].__dict__["preview_url"])
-                    print(subs[count].__dict__["preview_url"].find("?preview"))
                     urlstr = subs[count].__dict__["preview_url"][:subs[count].__dict__["preview_url"].find("?preview")]
                     driver.get(urlstr)
                     time.sleep(1)  
@@ -470,11 +456,14 @@ for a in assigns:
 
                 except Exception as why:
                     sys.stderr.write('Chromedriver Error: {}\n'.format(why))
-                    raise
+                    continue
             elif subs[count].__dict__["submission_type"]=="online_url":
-                open(currentassignsubmissionspath+"/"+aname+ "-" + subsname[count] +".txt", 'w').write(subs[count].__dict__["url"])
+                try:
+                    open(currentassignsubmissionspath+"/"+aname+ "-" + subsname[count] +".txt", 'w').write(subs[count].__dict__["url"])
+                except Exception as why:
+                    sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+                    continue
             else:
-                print(subs[count].__dict__)
                 continue
 print("[-] Assignment graded assessments are done")                
 
@@ -483,13 +472,17 @@ discussionspath = path+"/Discussions"
 os.mkdir(discussionspath)
 discussions  = course.get_discussion_topics()
 for i in discussions:
-    url = (i.__dict__)["html_url"]
-    driver.get(url)
-    time.sleep(1)   
-    driver.execute_script("window.print();")
-    time.sleep(1)
-    title =  sanitize(str((i.__dict__)["title"]))
-    rename_last_downloaded_file(dummypath, discussionspath+'/', title+'.pdf')
+    try:
+        url = (i.__dict__)["html_url"]
+        driver.get(url)
+        time.sleep(1)   
+        driver.execute_script("window.print();")
+        time.sleep(1)
+        title =  sanitize(str((i.__dict__)["title"]))
+        rename_last_downloaded_file(dummypath, discussionspath+'/', title+'.pdf')
+    except Exception as why:
+        sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+        continue
 print("Discussions Created")
 
 driver.close()
