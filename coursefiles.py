@@ -39,6 +39,8 @@ def sanitize(name):
     return name
 
 API_URL ="https://hulms.instructure.com"
+# canvas = canvasapi.Canvas("https://hulms.instructure.com", "17361~E4GIc6pfbPxcdnKSVhAxvh3xEzcTQcnH8JY3RwyA384YkVSCsIeSR9WpbVKKAoko")
+
 API_KEY = input("Enter API Access token key:\n")
 canvas = Canvas(API_URL, API_KEY)
 headers ={"Authorization":"Bearer "+API_KEY}
@@ -82,14 +84,21 @@ course = canvas.get_course(courseID)
 courseDict = course.__dict__
 d = courseDict["created_at"]
 dt = datetime.fromisoformat(d[:-1]).astimezone(timezone.utc)
-if int(dt.strftime("%m"))>=5 and int(dt.strftime("%m"))<=8:
+year = str(dt.year)
+if int(dt.strftime("%m"))>=5 and int(dt.strftime("%m"))<=9:
     term = "Fall"
 else:
+    if int(dt.strftime("%m"))>=10 and int(dt.strftime("%m"))<=12:
+        year = str(int(dt.year)+1)
+    else:
+        year = str(dt.year)
     term = "Spring"
-cname = courseDict['name'] +" " + term +" " + str(dt.year)
+cname = courseDict['name'] +" " + term +" " + year
 cname = sanitize(cname)
 parent_dir = os.getcwd()
 path = os.path.join(parent_dir, cname)
+if os.path.isdir(path):
+    shutil.rmtree(path)
 os.makedirs(path)
 subfolders = ["Lecture Notes", "Course Syllabus", "Assessments and Sample Solutions",  "Attendance Record", "Complete Result", "Student Evaluation", "Instructor's Feedback"]
 parent_dir = path
@@ -411,27 +420,33 @@ for a in assigns:
                 attachments = subs[count].__dict__["attachments"]
                 c = 1
                 for j in attachments:
-                    url = j["url"]
-                    r = requests.get(url, allow_redirects=True)
-                    Index = j["filename"][::-1].index(".")
-                    extname = j["filename"][len(j["filename"])-Index:]
-                    if "preview_url" not in j.keys() or j["preview_url"] is None:
-                        open(currentassignsubmissionspath+"/"+aname + "-" + subsname[count] +" " + str(c) + "."+extname, 'wb').write(r.content)
-                    elif "preview_url" in j.keys():
-                        if j["preview_url"] is not None:
-                            r =requests.get(url=API_URL + j["preview_url"], allow_redirects=False, headers=headers)
-                            i1 = r.text.find("http")
-                            i2 = r.text.find("redirected")
-                            url = r.text[i1:i2-2]
-                            i1 = url.find("view?")
-                            url = url[:i1]
-                            url+="annotated.pdf"
-                            r = requests.post(url, allow_redirects=True, headers=headers)
-                            r = requests.get(url+"/is_ready", allow_redirects=True, headers=headers)
-                            r = requests.get(url, allow_redirects=True, headers=headers)
-                            open(currentassignsubmissionspath+"/"+aname + "-" + subsname[count] +" " + str(c) + ' -annotated.pdf', 'wb').write(r.content)
+                    try:
+                        url = j["url"]
+                        r = requests.get(url, allow_redirects=True)
+                        Index = j["filename"][::-1].index(".")
+                        extname = j["filename"][len(j["filename"])-Index:]
+                        if "preview_url" not in j.keys() or j["preview_url"] is None:
+                            open(currentassignsubmissionspath+"/"+aname + "-" + subsname[count] +" " + str(c) + "."+extname, 'wb').write(r.content)
+                        elif "preview_url" in j.keys():
+                            if j["preview_url"] is not None:
+                                r =requests.get(url=API_URL + j["preview_url"], allow_redirects=False, headers=headers)
+                                i1 = r.text.find("http")
+                                i2 = r.text.find("redirected")
+                                url = r.text[i1:i2-2]
+                                i1 = url.find("view?")
+                                url = url[:i1]
+                                url+="annotated.pdf"
+                                r = requests.post(url, allow_redirects=True, headers=headers)
+                                r = requests.get(url+"/is_ready", allow_redirects=True, headers=headers)
+                                r = requests.get(url, allow_redirects=True, headers=headers)
 
-                    c+=1
+                                open(currentassignsubmissionspath+"/"+aname + "-" + subsname[count] +" " + str(c) + ' -annotated.pdf', 'wb').write(r.content)
+
+                        c+=1
+                    except Exception as why:
+                        sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+                        continue
+
                 c = 0
                 try:
                     urlstr = subs[count].__dict__["preview_url"][:subs[count].__dict__["preview_url"].find("?preview")]
