@@ -22,12 +22,12 @@ def rename_last_downloaded_file(dummy_dir, destination_dir, new_file_name):
             This function is going to loop as long as the directory is empty.
         """
         while not os.listdir(dummy_dir):
-            time.sleep(3)
+            time.sleep(2)
         s = max([dummy_dir+"/"+f for f in os.listdir(dummy_dir)], key=os.path.getctime)
         return s
 
     while '.part' in get_last_downloaded_file_path(dummy_dir):
-        time.sleep(3)
+        time.sleep(2)
     
     shutil.move(get_last_downloaded_file_path(dummy_dir), destination_dir+"/"+new_file_name)
 
@@ -137,7 +137,7 @@ for m in range(len(list(folders))):
         sfid = folders[m].__dict__["id"]
         foldersCheck[1] = True
     if folders[m].__dict__['name']=="Assignments":
-        solutionsFolder =folders[m]
+        assignFolder =folders[m]
         sfid = folders[m].__dict__["id"]
         foldersCheck[2] = True
 if lectureFolder is not None:
@@ -174,18 +174,19 @@ if assignFolder is not None:
 quizzespath = path+"/Assessments and Sample Solutions/Quiz Copies"
 quizzes = course.get_quizzes()
 for q in quizzes:
-    url = (q.__dict__)["html_url"]
-    url+="/read_only"
-    try:
-        driver.get(url)
-        driver.execute_script("document.getElementById('questions').classList.remove('brief');")
-        time.sleep(2)
-        fn = sanitize(str((q.__dict__)["title"]))
-        driver.execute_script("window.print();")
-        rename_last_downloaded_file(dummypath, quizzespath+'/', fn +'.pdf')
-    except Exception as why:
-        sys.stderr.write('Chromedriver Error: {}\n'.format(why))
-        continue
+    if q.__dict__["published"]=="true" or q.__dict__["published"]==True:
+        url = (q.__dict__)["html_url"]
+        url+="/read_only"
+        try:
+            driver.get(url)
+            driver.execute_script("document.getElementById('questions').classList.remove('brief');")
+            time.sleep(2)
+            fn = sanitize(str((q.__dict__)["title"]))
+            driver.execute_script("window.print();")
+            rename_last_downloaded_file(dummypath, quizzespath+'/', fn +'.pdf')
+        except Exception as why:
+            sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+            continue
 
 print("[-] Quizzes Preview done")
 
