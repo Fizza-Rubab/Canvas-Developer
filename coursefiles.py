@@ -15,6 +15,16 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
 
+# ref: https://stackoverflow.com/questions/3173320/text-progress-bar-in-terminal-with-block-characters?noredirect=1&lq=1
+def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end = printEnd)
+    if iteration == total: 
+        print()
+
+
 def rename_last_downloaded_file(dummy_dir, destination_dir, new_file_name):
     def get_last_downloaded_file_path(dummy_dir):
         """ Return the last modified -in this case last downloaded- file path.
@@ -39,7 +49,6 @@ def sanitize(name):
     return name
 
 API_URL ="https://hulms.instructure.com"
-
 API_KEY = input("Enter API Access token key:\n")
 canvas = Canvas(API_URL, API_KEY)
 headers ={"Authorization":"Bearer "+API_KEY}
@@ -138,42 +147,58 @@ for m in range(len(list(folders))):
         foldersCheck[1] = True
     if folders[m].__dict__['name']=="Assignments":
         assignFolder =folders[m]
-        sfid = folders[m].__dict__["id"]
+        afid = folders[m].__dict__["id"]
         foldersCheck[2] = True
 if lectureFolder is not None:
+    print("Downloading Lecture Notes")
     files_url = lectureFolder.__dict__["files_url"]
     r =requests.get(files_url, headers=headers)
     filesdata = json.loads(r.text)
-    for f in filesdata:
+    l = len(filesdata)
+    printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
+    for i, f in enumerate(filesdata):        
         response = requests.get(f["url"], allow_redirects=True)
         fn = sanitize(f["filename"])
         open(path+"/Lecture notes/" + fn, 'wb').write(response.content)
+        printProgressBar(i + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
     print("[-] Lecture Notes Downloaded")
 
 if solutionsFolder is not None:
+    print("Downloading Uploaded Solutions")
     files_url = solutionsFolder.__dict__["files_url"]
     r =requests.get(files_url, headers=headers)
     filesdata = json.loads(r.text)
-    for f in filesdata:
+    l = len(filesdata)
+    printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
+    for i, f in enumerate(filesdata):
         fn = sanitize(f["filename"])
         response = requests.get(f["url"], allow_redirects=True)
         open(path+"/Assessments and Sample Solutions/Model Assignments Solutions/" + fn, 'wb').write(response.content)
+        printProgressBar(i + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
     print("[-] Solutions downloaded")
 
 if assignFolder is not None:
+    print("Downloading Uploaded Solutions")
     files_url = assignFolder.__dict__["files_url"]
     r =requests.get(files_url, headers=headers)
     filesdata = json.loads(r.text)
-    for f in filesdata:
+    l = len(filesdata)
+    printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
+    for i, f in enumerate(filesdata):
         fn = sanitize(f["filename"])
         response = requests.get(f["url"], allow_redirects=True)
         open(path+"/Assessments and Sample Solutions/Assignment Copies/Downloaded/" + fn, 'wb').write(response.content)
+        printProgressBar(i + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
     print("[-] Assignment Files downloaded")
 
 # Get Read only copy of all quizzes
 quizzespath = path+"/Assessments and Sample Solutions/Quiz Copies"
 quizzes = course.get_quizzes()
-for q in quizzes:
+l = len(list(quizzes))
+print("Downloading Quiz Copies")
+printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
+for i, q in enumerate(quizzes):
+    printProgressBar(i + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
     if q.__dict__["published"]=="true" or q.__dict__["published"]==True:
         url = (q.__dict__)["html_url"]
         url+="/read_only"
@@ -192,9 +217,12 @@ print("[-] Quizzes Preview done")
 
 
 
-# # # Get model solution for all quizzes
+# # # # Get model solution for all quizzes
 quizzesmodelpath = path + "/Assessments and Sample Solutions/Model Quizzes Solutions"   
-for q in quizzes:
+print("Downloading Quiz Canvas Solutions")
+printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
+for i, q in enumerate(quizzes):
+    printProgressBar(i + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
     try:
         driver.get(q.__dict__["html_url"]+'/edit#questions_tab')
         try:
@@ -213,7 +241,10 @@ print("[-] Quizzes Model Solution is done")
 
 # # # Get 3 sample graded student submissions of each quiz
 quizsubmissionspath = path + "/Assessments and Sample Solutions/Three Sample Graded Quizzes Solutions"
-for q in quizzes:
+print("Downloading Three Graded Quiz Solutions")
+printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
+for i, q in enumerate(quizzes):
+    printProgressBar(i + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
     r = requests.get("https://hulms.instructure.com/api/v1/courses/" + str(courseID) + "/quizzes/"+ str(q.__dict__["id"]) + "/questions", headers=headers)
     questions = r.json()
     attachments = False
@@ -329,11 +360,14 @@ for q in quizzes:
             continue
 print("[-] Quizzes 3 Graded Assessments are done")
 
-# Get read only copy for an assignments
+# # Get read only copy for an assignments
 assignpath = path+"/Assessments and Sample Solutions/Assignment Copies"
 assigns = course.get_assignments()  
-
-for i in assigns:
+l = len(list(assigns))
+print("Downloading Assignment Copies")
+printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
+for it, i in enumerate(assigns):
+    printProgressBar(it + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
     if i.__dict__["is_quiz_assignment"]==False and "online_quiz" not in i.__dict__["submission_types"]:
         url = i.__dict__["html_url"]
         t = sanitize(str(i.__dict__["name"]))
@@ -349,9 +383,12 @@ for i in assigns:
             continue       
 print("[-] Assignments Preview Copies Done")        
 
-# # Get 3 submissions for each assignments
-assignsubmissionspath = path + "/Assessments and Sample Solutions/Three Sample Graded Assignments Solutions"
-for a in assigns:
+# # # Get 3 submissions for each assignments
+# assignsubmissionspath = path + "/Assessments and Sample Solutions/Three Sample Graded Assignments Solutions"
+print("Downloading Assignment Submissions")
+printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
+for it, a in assigns:
+    printProgressBar(it + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
     if (a.__dict__['is_quiz_assignment']==False) and "online_quiz" not in a.__dict__["submission_types"]:
         submissions = a.get_submissions()
         s = [] 
@@ -500,7 +537,11 @@ print("[-] Assignment graded assessments are done")
 discussionspath = path+"/Discussions"
 os.mkdir(discussionspath)
 discussions  = course.get_discussion_topics()
-for i in discussions:
+l = len(list(discussions))
+print("Downloading Discussion Topics")
+printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
+for it, i in enumerate(discussions):
+    printProgressBar(it + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
     try:
         url = (i.__dict__)["html_url"]
         driver.get(url)
