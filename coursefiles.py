@@ -39,7 +39,6 @@ def sanitize(name):
     return name
 
 API_URL ="https://hulms.instructure.com"
-# canvas = canvasapi.Canvas("https://hulms.instructure.com", "17361~E4GIc6pfbPxcdnKSVhAxvh3xEzcTQcnH8JY3RwyA384YkVSCsIeSR9WpbVKKAoko")
 
 API_KEY = input("Enter API Access token key:\n")
 canvas = Canvas(API_URL, API_KEY)
@@ -223,61 +222,65 @@ for q in quizzes:
     fn = str((q.__dict__)["title"])
     #  Fetching file uploads    
     if attachments:
-        if "speed_grader_url" in q.__dict__.keys():
-            if q.__dict__["speed_grader_url"] is not None:             
-                qassignIDindex = q.__dict__["speed_grader_url"][::-1].index("=")
-                qassignID = int(q.__dict__["speed_grader_url"][len(q.__dict__["speed_grader_url"])-qassignIDindex:])
-                a = (course.get_assignment(qassignID))
-                r =requests.get("https://hulms.instructure.com/api/v1/courses/" + str(courseID) + "/assignments/"+str(qassignID)+"/submissions?include[]=submission_history", headers=headers)
-                submissions = r.json()
-                s = sorted([i for i in submissions if i['score']!=None], key=lambda d: d['score'])
-                if s==[]:
-                    continue
-                lowestsub = s[0]
-                highestsub = s[-1]
-                Sum = 0
-                count = 0
-                for i in s:
-                    if i["score"]!=None:
-                        Sum+=i["score"]
-                        count+=1
-                average = Sum/count
-                averagesub = min(s, key=lambda x:abs(x["score"]-average))
-                if len(s)>2:
-                    if averagesub==lowestsub and averagesub!=highestsub:
-                        averagesub = s[1]
-                    elif averagesub!=lowestsub and averagesub==highestsub:
-                        averagesub = s[-2]
-                    flag = False
-                currentquizsubmissionspath = quizsubmissionspath + "/" + fn
-                os.makedirs(currentquizsubmissionspath)
-                time.sleep(1.5)
-                subs = [lowestsub, highestsub, averagesub]
-                subsname = ["min", "max", "avg"]
-                subsnameattach = ["min-attachment", "max-attachment", "avg-attachment"]
-                for count in range(3):
-                    submissionData = subs[count]["submission_history"][-1]["submission_data"]
-                    attachedFiles = []
-                    for k in submissionData:
-                        if "attachment_ids" in k.keys():
-                            attachedFiles.extend(k["attachment_ids"])
-                    it = 1
-                    for f in attachedFiles:
-                        filee= canvas.get_file(f)
-                        Index = str(filee)[::-1].index(".")
-                        extname = str(filee)[len(str(filee))-Index:]
-                        filee.download(currentquizsubmissionspath + "/" + fn + "-" +subsnameattach[count]+"-" + str(it) + "." + extname)
-                        it+=1
-                    try:
-                        url = "https://hulms.instructure.com/courses/" + str(courseID) + "/gradebook/speed_grader?assignment_id=" + str(subs[count]["assignment_id"]) + "&student_id=" + str(subs[count]["user_id"])
-                        driver.get(url)
-                        time.sleep(2.5)  
-                        driver.execute_script("window.print();")
-                        time.sleep(0.5)
-                        rename_last_downloaded_file(dummypath, currentquizsubmissionspath+'/', fn + subsname[count]+'.pdf')
-                    except Exception as why:
-                        sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+        try:
+            if "speed_grader_url" in q.__dict__.keys():
+                if q.__dict__["speed_grader_url"] is not None:             
+                    qassignIDindex = q.__dict__["speed_grader_url"][::-1].index("=")
+                    qassignID = int(q.__dict__["speed_grader_url"][len(q.__dict__["speed_grader_url"])-qassignIDindex:])
+                    a = (course.get_assignment(qassignID))
+                    r =requests.get("https://hulms.instructure.com/api/v1/courses/" + str(courseID) + "/assignments/"+str(qassignID)+"/submissions?include[]=submission_history", headers=headers)
+                    submissions = r.json()
+                    s = sorted([i for i in submissions if i['score']!=None], key=lambda d: d['score'])
+                    if s==[]:
                         continue
+                    lowestsub = s[0]
+                    highestsub = s[-1]
+                    Sum = 0
+                    count = 0
+                    for i in s:
+                        if i["score"]!=None:
+                            Sum+=i["score"]
+                            count+=1
+                    average = Sum/count
+                    averagesub = min(s, key=lambda x:abs(x["score"]-average))
+                    if len(s)>2:
+                        if averagesub==lowestsub and averagesub!=highestsub:
+                            averagesub = s[1]
+                        elif averagesub!=lowestsub and averagesub==highestsub:
+                            averagesub = s[-2]
+                        flag = False
+                    currentquizsubmissionspath = quizsubmissionspath + "/" + fn
+                    os.makedirs(currentquizsubmissionspath)
+                    time.sleep(1.5)
+                    subs = [lowestsub, highestsub, averagesub]
+                    subsname = ["min", "max", "avg"]
+                    subsnameattach = ["min-attachment", "max-attachment", "avg-attachment"]
+                    for count in range(3):
+                        submissionData = subs[count]["submission_history"][-1]["submission_data"]
+                        attachedFiles = []
+                        for k in submissionData:
+                            if "attachment_ids" in k.keys():
+                                attachedFiles.extend(k["attachment_ids"])
+                        it = 1
+                        for f in attachedFiles:
+                            filee= canvas.get_file(f)
+                            Index = str(filee)[::-1].index(".")
+                            extname = str(filee)[len(str(filee))-Index:]
+                            filee.download(currentquizsubmissionspath + "/" + fn + "-" +subsnameattach[count]+"-" + str(it) + "." + extname)
+                            it+=1
+                        try:
+                            url = "https://hulms.instructure.com/courses/" + str(courseID) + "/gradebook/speed_grader?assignment_id=" + str(subs[count]["assignment_id"]) + "&student_id=" + str(subs[count]["user_id"])
+                            driver.get(url)
+                            time.sleep(2.5)  
+                            driver.execute_script("window.print();")
+                            time.sleep(0.5)
+                            rename_last_downloaded_file(dummypath, currentquizsubmissionspath+'/', fn + subsname[count]+'.pdf')
+                        except Exception as why:
+                            sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+                            continue
+        except Exception as why:
+            sys.stderr.write('Error: {}\n'.format(why))
+            continue
     else:
         submissions = q.get_submissions()
         s = sorted([i for i in submissions if i.score!=None], key=lambda d: d.__dict__['score'])
