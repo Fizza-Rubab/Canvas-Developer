@@ -192,7 +192,7 @@ print("[-] Quizzes Preview done")
 
 
 
-# # Get model solution for all quizzes
+# # # Get model solution for all quizzes
 quizzesmodelpath = path + "/Assessments and Sample Solutions/Model Quizzes Solutions"   
 for q in quizzes:
     try:
@@ -211,7 +211,7 @@ for q in quizzes:
         continue
 print("[-] Quizzes Model Solution is done")
 
-# # Get 3 sample graded student submissions of each quiz
+# # # Get 3 sample graded student submissions of each quiz
 quizsubmissionspath = path + "/Assessments and Sample Solutions/Three Sample Graded Quizzes Solutions"
 for q in quizzes:
     r = requests.get("https://hulms.instructure.com/api/v1/courses/" + str(courseID) + "/quizzes/"+ str(q.__dict__["id"]) + "/questions", headers=headers)
@@ -334,7 +334,7 @@ assignpath = path+"/Assessments and Sample Solutions/Assignment Copies"
 assigns = course.get_assignments()  
 
 for i in assigns:
-    if i.__dict__["is_quiz_assignment"]==False and "online_quiz" not in i.__dict__["submission_types"] and "external_tool" not in i.__dict__["submission_types"]:
+    if i.__dict__["is_quiz_assignment"]==False and "online_quiz" not in i.__dict__["submission_types"]:
         url = i.__dict__["html_url"]
         t = sanitize(str(i.__dict__["name"]))
         t+='.pdf'
@@ -352,25 +352,24 @@ print("[-] Assignments Preview Copies Done")
 # # Get 3 submissions for each assignments
 assignsubmissionspath = path + "/Assessments and Sample Solutions/Three Sample Graded Assignments Solutions"
 for a in assigns:
-    # print(a.__dict__)
-    if ((not a.__dict__['is_quiz_assignment'])) and ("none" not in a.__dict__['submission_types']) and "online_quiz" not in a.__dict__["submission_types"] and "external_tool" not in a.__dict__["submission_types"]:
+    if (a.__dict__['is_quiz_assignment']==False) and "online_quiz" not in a.__dict__["submission_types"]:
         submissions = a.get_submissions()
         s = [] 
         for x in submissions:
-            if x.score!=None and x.__dict__['submission_type']!=None:
+            if x.__dict__["score"]!=None:
                 s.append(x)
         if len(s)==0: continue
-        s.sort(key=lambda x: x.score)
+        s.sort(key=lambda x: x.__dict__["score"])
         lowestsub = s[0]
         highestsub = s[-1]
         Sum = 0
         count = 0
         for i in s:
-            if i.score!=None:
-                Sum+=i.score
+            if i.__dict__["score"]!=None:
+                Sum+=i.__dict__["score"]
                 count+=1
         average = Sum/count
-        averagesub = min(s, key=lambda x:abs(x.score-average))
+        averagesub = min(s, key=lambda x:abs(x.__dict__["score"]-average))
         if len(s)>2:
             if averagesub==lowestsub and averagesub!=highestsub:
                 averagesub = s[1]
@@ -378,7 +377,7 @@ for a in assigns:
                 averagesub = s[-2]
         subs = [lowestsub, highestsub, averagesub]
         subsname = ["min", "max", "avg"]
-        aname = sanitize(str((a.__dict__)["name"]))
+        aname = sanitize(str((a.__dict__)["name"])) 
         currentassignsubmissionspath = assignsubmissionspath + "/" + aname
         try:
             if not os.path.exists(currentassignsubmissionspath):
@@ -484,7 +483,17 @@ for a in assigns:
                     sys.stderr.write('Chromedriver Error: {}\n'.format(why))
                     continue
             else:
-                continue
+                try:
+                    urlstr = subs[count].__dict__["preview_url"][:subs[count].__dict__["preview_url"].find("?preview")]
+                    driver.get(urlstr)
+                    time.sleep(1)  
+                    driver.execute_script("window.print();")
+                    time.sleep(1)
+                    rename_last_downloaded_file(dummypath, currentassignsubmissionspath +'/', aname+'-'+subsname[count]+'.pdf')
+                except Exception as why:
+                    sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+                    continue
+    
 print("[-] Assignment graded assessments are done")                
 
 
