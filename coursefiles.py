@@ -117,6 +117,7 @@ os.makedirs(path+"/Assessments and Sample Solutions/Three Sample Graded Quizzes 
 os.makedirs(path+"/Assessments and Sample Solutions/Three Sample Graded Assignments Solutions")
 os.makedirs(path+"/Assessments and Sample Solutions/Quiz Copies")
 os.makedirs(path+"/Assessments and Sample Solutions/Assignment Copies")
+os.makedirs(path+"/Assessments and Sample Solutions/Assignment Copies/Downloaded")
 
 
 
@@ -166,7 +167,7 @@ if assignFolder is not None:
     for f in filesdata:
         fn = sanitize(f["filename"])
         response = requests.get(f["url"], allow_redirects=True)
-        open(path+"/Assessments and Sample Solutions/Assignment Copies/" + fn, 'wb').write(response.content)
+        open(path+"/Assessments and Sample Solutions/Assignment Copies/Downloaded/" + fn, 'wb').write(response.content)
     print("[-] Assignment Files downloaded")
 
 # Get Read only copy of all quizzes
