@@ -138,7 +138,7 @@ for m in range(len(list(folders))):
     if folders[m].__dict__['name']=="Assignments":
         solutionsFolder =folders[m]
         sfid = folders[m].__dict__["id"]
-        foldersCheck[12] = True
+        foldersCheck[2] = True
 if lectureFolder is not None:
     files_url = lectureFolder.__dict__["files_url"]
     r =requests.get(files_url, headers=headers)
