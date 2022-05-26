@@ -387,7 +387,7 @@ print("[-] Assignments Preview Copies Done")
 # assignsubmissionspath = path + "/Assessments and Sample Solutions/Three Sample Graded Assignments Solutions"
 print("Downloading Assignment Submissions")
 printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
-for it, a in assigns:
+for it, a in enumerate(assigns):
     printProgressBar(it + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
     if (a.__dict__['is_quiz_assignment']==False) and "online_quiz" not in a.__dict__["submission_types"]:
         submissions = a.get_submissions()
