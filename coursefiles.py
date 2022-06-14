@@ -14,6 +14,7 @@ from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
+import logging
 
 # ref: https://stackoverflow.com/questions/3173320/text-progress-bar-in-terminal-with-block-characters?noredirect=1&lq=1
 def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
@@ -48,12 +49,38 @@ def sanitize(name):
             name = name.replace(i,"")
     return name
 
+logging.getLogger("canvasapi").setLevel(logging.WARNING)
+logging.getLogger("requests").setLevel(logging.WARNING)
+logging.getLogger("selenium").setLevel(logging.WARNING)
+logging.getLogger("os").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+
+
+logging.basicConfig(filename='canvas-app.log', filemode='w', level = logging.DEBUG, format='%(name)s - %(levelname)s - %(message)s')
+logging.info("Loading the config file")
+
+configFile = open("config.json", "r")
+conf = json.load(configFile)
+exportEverything = False
+if "*" in conf["files_to_download"]:
+    exportEverything = True
 API_URL ="https://hulms.instructure.com"
-API_KEY = input("Enter API Access token key:\n")
-canvas = Canvas(API_URL, API_KEY)
+API_KEY = conf["API_KEY"]
+if API_KEY=="":
+    API_KEY = input("Enter API Access token key:\n")
+try:
+    canvas = Canvas(API_URL, API_KEY)
+except Exception as e:
+    logging.error(e)
+    exit()
+
 headers ={"Authorization":"Bearer "+API_KEY}
 courseUrl = input("Enter course URL:\n")
-dummypath = os.path.join(os.getcwd(), "dummy")
+# courseUrl = "https://hulms.instructure.com/1923"
+if conf["saveLocation"]=="":
+    dummypath = os.path.join(os.getcwd(), "dummy")
+else:
+    dummypath = os.path.join(conf["saveLocation"], "dummy")
 if not os.path.exists(dummypath):
     os.makedirs(dummypath)
 else:
@@ -103,22 +130,30 @@ else:
     term = "Spring"
 cname = courseDict['name'] +" " + term +" " + year
 cname = sanitize(cname)
-parent_dir = os.getcwd()
+if conf["saveLocation"] == "":
+    parent_dir = os.getcwd()
+else:
+    parent_dir = conf["saveLocation"]
 path = os.path.join(parent_dir, cname)
 if os.path.isdir(path):
     shutil.rmtree(path)
 os.makedirs(path)
-subfolders = ["Lecture Notes", "Course Syllabus", "Assessments and Sample Solutions",  "Attendance Record", "Complete Result", "Student Evaluation", "Instructor's Feedback"]
+logging.info("Base Folder created")
+subfolders = ["Lecture Notes", "Syllabus and Other Downloaded Files", "Assessments and Sample Solutions",  "Attendance Record", "Complete Result", "Student Evaluation", "Instructor's Feedback"]
 parent_dir = path
 for folder in subfolders:
     os.makedirs(os.path.join(parent_dir,folder))
+logging.info("Folders created")
 print("[-] made the folders")
     
 f  = (course.get_files())
+toDownload = {i:False for i in conf["files_to_download"]}
 for i in f:
-    if str(i)=="syllabus.pdf":
-        i.download(path+"/Course Syllabus/" + str(i))
-        print("[-] Syllabus downloaded")
+    if str(i) in toDownload.keys() and toDownload[str(i)]==False:
+        i.download(path+"/Syllabus and Other Downloaded Files/" + str(i))
+        print("[-] " + str(i) + " downloaded")
+        toDownload[str(i)] = True
+    if all(value == True for value in toDownload.values()):
         break
 os.makedirs(path+"/Assessments and Sample Solutions/Model Assignments Solutions")
 os.makedirs(path+"/Assessments and Sample Solutions/Model Quizzes Solutions")
@@ -127,6 +162,7 @@ os.makedirs(path+"/Assessments and Sample Solutions/Three Sample Graded Assignme
 os.makedirs(path+"/Assessments and Sample Solutions/Quiz Copies")
 os.makedirs(path+"/Assessments and Sample Solutions/Assignment Copies")
 os.makedirs(path+"/Assessments and Sample Solutions/Assignment Copies/Downloaded")
+logging.info("Subfolders created")
 
 
 
@@ -159,9 +195,10 @@ if lectureFolder is not None:
     for i, f in enumerate(filesdata):        
         response = requests.get(f["url"], allow_redirects=True)
         fn = sanitize(f["filename"])
-        open(path+"/Lecture notes/" + fn, 'wb').write(response.content)
+        open(path+"/Lecture Notes/" + fn, 'wb').write(response.content)
         printProgressBar(i + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
     print("[-] Lecture Notes Downloaded")
+    logging.info("Lecture Notes Downloaded")
 
 if solutionsFolder is not None:
     print("Downloading Uploaded Solutions")
@@ -176,6 +213,7 @@ if solutionsFolder is not None:
         open(path+"/Assessments and Sample Solutions/Model Assignments Solutions/" + fn, 'wb').write(response.content)
         printProgressBar(i + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
     print("[-] Solutions downloaded")
+    logging.info("Solutions downloaded")
 
 if assignFolder is not None:
     print("Downloading Uploaded Solutions")
@@ -190,12 +228,14 @@ if assignFolder is not None:
         open(path+"/Assessments and Sample Solutions/Assignment Copies/Downloaded/" + fn, 'wb').write(response.content)
         printProgressBar(i + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
     print("[-] Assignment Files downloaded")
+    logging.info("Solutions downloaded")
 
 # Get Read only copy of all quizzes
 quizzespath = path+"/Assessments and Sample Solutions/Quiz Copies"
 quizzes = course.get_quizzes()
 l = len(list(quizzes))
 print("Downloading Quiz Copies")
+logging.info("Downloading Quiz Copies")
 printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
 for i, q in enumerate(quizzes):
     printProgressBar(i + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
@@ -211,15 +251,18 @@ for i, q in enumerate(quizzes):
             rename_last_downloaded_file(dummypath, quizzespath+'/', fn +'.pdf')
         except Exception as why:
             sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+            logging.error(why)
             continue
 
 print("[-] Quizzes Preview done")
+logging.info("Quizzes Preview done")
 
 
 
 # # # # Get model solution for all quizzes
 quizzesmodelpath = path + "/Assessments and Sample Solutions/Model Quizzes Solutions"   
 print("Downloading Quiz Canvas Solutions")
+logging.info("Downloading Quiz Canvas Solutions")
 printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
 for i, q in enumerate(quizzes):
     printProgressBar(i + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
@@ -236,12 +279,17 @@ for i, q in enumerate(quizzes):
         rename_last_downloaded_file(dummypath, quizzesmodelpath+'/', fn +'-solution.pdf')
     except Exception as why:
         sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+        logging.error(why)
         continue
 print("[-] Quizzes Model Solution is done")
+logging.info("Quizzes Model Solution is done")
+
 
 # # # Get 3 sample graded student submissions of each quiz
 quizsubmissionspath = path + "/Assessments and Sample Solutions/Three Sample Graded Quizzes Solutions"
 print("Downloading Three Graded Quiz Solutions")
+logging.info("Downloading Three Graded Quiz Solutions")
+
 printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
 for i, q in enumerate(quizzes):
     printProgressBar(i + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
@@ -310,9 +358,11 @@ for i, q in enumerate(quizzes):
                             rename_last_downloaded_file(dummypath, currentquizsubmissionspath+'/', fn + subsname[count]+'.pdf')
                         except Exception as why:
                             sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+                            logging.error(why)
                             continue
         except Exception as why:
             sys.stderr.write('Error: {}\n'.format(why))
+            logging.error(why)
             continue
     else:
         submissions = q.get_submissions()
@@ -357,14 +407,19 @@ for i, q in enumerate(quizzes):
             rename_last_downloaded_file(dummypath, currentquizsubmissionspath+'/',fn +'-avg.pdf')
         except Exception as why:
             sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+            logging.error(why)
             continue
 print("[-] Quizzes 3 Graded Assessments are done")
+logging.info("[-] Quizzes 3 Graded Assessments are done")
+
 
 # # Get read only copy for an assignments
 assignpath = path+"/Assessments and Sample Solutions/Assignment Copies"
 assigns = course.get_assignments()  
 l = len(list(assigns))
 print("Downloading Assignment Copies")
+logging.info("Downloading Assignment Copies")
+
 printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
 for it, i in enumerate(assigns):
     printProgressBar(it + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
@@ -380,12 +435,16 @@ for it, i in enumerate(assigns):
             rename_last_downloaded_file(dummypath, assignpath+'/', t)
         except Exception as why:
             sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+            logging.error(why)
             continue       
-print("[-] Assignments Preview Copies Done")        
+print("[-] Assignments Preview Copies Done")
+logging.info("Assignments Preview Copies Done")
 
-# # # Get 3 submissions for each assignments
-# assignsubmissionspath = path + "/Assessments and Sample Solutions/Three Sample Graded Assignments Solutions"
+
+# # Get 3 submissions for each assignments
+assignsubmissionspath = path + "/Assessments and Sample Solutions/Three Sample Graded Assignments Solutions"
 print("Downloading Assignment Submissions")
+logging.info("Downloading Assignment Submissions")
 printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
 for it, a in enumerate(assigns):
     printProgressBar(it + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
@@ -422,6 +481,7 @@ for it, a in enumerate(assigns):
                 time.sleep(1.5)
         except Exception as why:
                 sys.stderr.write('Path creation: {}\n'.format(why))
+                logging.error(why)
                 continue
         for count in range(3):
             if subs[count].__dict__["submission_type"]=="online_text_entry":
@@ -446,6 +506,7 @@ for it, a in enumerate(assigns):
 
                 except Exception as why:
                     sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+                    logging.error(why)
                     continue
             elif subs[count].__dict__["submission_type"]=="discussion_topic":
                 try:
@@ -456,6 +517,7 @@ for it, a in enumerate(assigns):
                     rename_last_downloaded_file(dummypath, currentassignsubmissionspath +'/', aname+'-'+subsname[count]+'.pdf')
                 except Exception as why:
                     sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+                    logging.error(why)
                     continue
             elif subs[count].__dict__["submission_type"]=="online_upload":
                 attachments = subs[count].__dict__["attachments"]
@@ -486,6 +548,7 @@ for it, a in enumerate(assigns):
                         c+=1
                     except Exception as why:
                         sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+                        logging.error(why)
                         continue
 
                 c = 0
@@ -512,12 +575,14 @@ for it, a in enumerate(assigns):
 
                 except Exception as why:
                     sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+                    logging.error(why)
                     continue
             elif subs[count].__dict__["submission_type"]=="online_url":
                 try:
                     open(currentassignsubmissionspath+"/"+aname+ "-" + subsname[count] +".txt", 'w').write(subs[count].__dict__["url"])
                 except Exception as why:
                     sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+                    logging.error(why)
                     continue
             else:
                 try:
@@ -529,31 +594,68 @@ for it, a in enumerate(assigns):
                     rename_last_downloaded_file(dummypath, currentassignsubmissionspath +'/', aname+'-'+subsname[count]+'.pdf')
                 except Exception as why:
                     sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+                    logging.error(why)
                     continue
     
-print("[-] Assignment graded assessments are done")                
+print("[-] Assignment graded assessments are done")
+logging.info("Assignment graded assessments are done")                
 
 
-discussionspath = path+"/Discussions"
-os.mkdir(discussionspath)
-discussions  = course.get_discussion_topics()
-l = len(list(discussions))
-print("Downloading Discussion Topics")
-printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
-for it, i in enumerate(discussions):
-    printProgressBar(it + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
-    try:
-        url = (i.__dict__)["html_url"]
-        driver.get(url)
-        time.sleep(1)   
-        driver.execute_script("window.print();")
-        time.sleep(1)
-        title =  sanitize(str((i.__dict__)["title"]))
-        rename_last_downloaded_file(dummypath, discussionspath+'/', title+'.pdf')
-    except Exception as why:
-        sys.stderr.write('Chromedriver Error: {}\n'.format(why))
-        continue
-print("Discussions Created")
+
+if conf["downloadDiscussions"]== "True":
+    discussionspath = path+"/Discussions"
+    os.mkdir(discussionspath)
+    discussions  = course.get_discussion_topics()
+    l = len(list(discussions))
+    print("Downloading Discussion Topics")
+    logging.info("Downloading Discussion Topics")
+    printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
+    for it, i in enumerate(discussions):
+        printProgressBar(it + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
+        try:
+            url = (i.__dict__)["html_url"]
+            driver.get(url)
+            time.sleep(1)   
+            driver.execute_script("window.print();")
+            time.sleep(1)
+            title =  sanitize(str((i.__dict__)["title"]))
+            rename_last_downloaded_file(dummypath, discussionspath+'/', title+'.pdf')
+        except Exception as why:
+            sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+            logging.error(why)
+            continue
+    print("Discussions Created")
+    logging.info("Discussions Created")
+
+
+if exportEverything==True:
+    url = API_URL+"/api/v1/courses/"+str(courseID)+"/content_exports?export_type=zip"
+    r = requests.post(url, headers=headers)
+    rtext = json.loads(r.text)
+    exportId = rtext["id"]
+    progressUrl = rtext["progress_url"]
+    print("Exporting the entire course")
+    printProgressBar(0, 100, prefix = 'Progress:', suffix = 'Complete', length = 50)
+    completion = 0
+    while completion<100:
+        r = requests.get(progressUrl, headers=headers)
+        rtext = json.loads(r.text)
+        completion = rtext["completion"]
+        printProgressBar(completion, 100, prefix = 'Progress:', suffix = 'Complete', length = 50)
+        time.sleep(4)
+    r = requests.get(API_URL+"/api/v1/courses/"+str(courseID)+"/content_exports/" + str(exportId), headers=headers)
+    rtext = json.loads(r.text)
+    filename = rtext["attachment"]["filename"]
+    url = rtext["attachment"]["url"]
+    r = requests.get(url, allow_redirects=True, headers=headers)
+    filenamefinal = parent_dir + "/" + filename
+    open(str(filenamefinal), 'wb').write(r.content)
+logging.info("Course export completed and zip downloaded")
+logging.info("Course Files download completed.")
+print("[-] Course Export Zip Downloaded")
+    
+
+     
 
 driver.close()
 driver.quit()
