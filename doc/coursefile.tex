@@ -92,6 +92,15 @@ if they are named as follows.
   Solutions/'' sub-directory in the output folder
 \end{enumerate}
 
+\section{Configuration}
+A json formatted configuration file has been added to the repository to allow flexibility to the user. The following keys/options can be adjusted as per your preference.
+\begin{enumerate}
+\item \texttt{saveLocation} value can be changed to the directory where you want the coursefile folder to download.
+\item \texttt{downloadDiscussions} can be set to  True or False to enable or disable the download of discussion topics.
+\item \texttt{API\_KEY} can be replaced to avoid entering API\_KEY as an input to the program through terminal for each run.
+\item \texttt{files\_to\_download} value is a list containing all the files you want to download from your canvas course's files folder anywhere in the file heirarchy. Append any specific files you want to download. If you want to export all files and modules, append \texttt{"*"} to the list.
+\end{enumerate}
+
 \section{Running the file}
 
 Before running the program, ensure that you have a strong and stable
@@ -153,9 +162,9 @@ following:
   The pdfs are generated incorrectly.
 \end{enumerate}
 
-Kindly take a screenshot of the console error message on the console, a
+After running the code, your code repository will contain a "canvas-app.log" file which contains errors, warnings and debug messages. This can help diagnose errors. Kindly take a screenshot of the console error message on the console, a
 screenshot of the browser window and a breif error description and mail
-it to \texttt{fr06161@st.habib.edu.pk}.
+it to \texttt{fr06161@st.habib.edu.pk} with the log file as an attachment.
 
 \section{Code}
 
