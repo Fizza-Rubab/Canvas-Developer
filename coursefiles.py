@@ -608,7 +608,7 @@ if conf["download_graded_assignments"]:
 
 
 
-if conf["download_discussions"]== "True":
+if conf["download_discussions"]:
     discussionspath = path+"/Discussions"
     os.mkdir(discussionspath)
     discussions  = course.get_discussion_topics()
