@@ -2,6 +2,7 @@
     
     "API_KEY": "",
     "API_URL": "https://hulms.instructure.com",
+    "LOGIN_URL": "https://hulms.instructure.com/login/canvas",
     "files_to_download": ["syllabus.pdf", "*"],
     "save_location": "",
     "download_quiz_copies":true,

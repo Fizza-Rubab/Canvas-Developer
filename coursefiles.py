@@ -66,6 +66,7 @@ if "*" in conf["files_to_download"]:
     exportEverything = True
 API_URL = conf["API_URL"]
 API_KEY = conf["API_KEY"]
+LOGIN_URL = conf["LOGIN_URL"]
 if API_KEY=="":
     API_KEY = input("Enter API Access token key:\n")
 try:
@@ -108,7 +109,7 @@ chrome_options = webdriver.ChromeOptions()
 chrome_options.add_experimental_option('prefs', profile)
 chrome_options.add_argument('--kiosk-printing')
 driver = webdriver.Chrome(options=chrome_options, executable_path=ChromeDriverManager().install())
-driver.get(API_URL)
+driver.get(LOGIN_URL)
 element = WebDriverWait(driver, 2000).until(
         EC.title_is("Dashboard")
     )
