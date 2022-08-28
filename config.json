@@ -1,6 +1,14 @@
 {
+    
+    "API_KEY": "17361~0yOJPT02iOLJ5ZUoVvSRhYvdf7AAJ4kv4ET95osteKVuf8Jxbynvq0bgFGn37UST",
+    "API_URL": "https://hulms.instructure.com",
     "files_to_download": ["syllabus.pdf"],
-    "saveLocation": "",
-    "downloadDiscussions": "True",
-    "API_KEY": ""
+    "save_location": "",
+    "download_quiz_copies":"True",
+    "download_assignment_copies":"True",
+    "download_model_quizzes":"True",
+    "download_model_assignments":"False",
+    "download_graded_quizzes":"False",
+    "download_graded_assignments":"True",
+    "download_discussions": "True"
 }

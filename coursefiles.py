@@ -64,7 +64,7 @@ conf = json.load(configFile)
 exportEverything = False
 if "*" in conf["files_to_download"]:
     exportEverything = True
-API_URL ="https://hulms.instructure.com"
+API_URL = conf["API_URL"]
 API_KEY = conf["API_KEY"]
 if API_KEY=="":
     API_KEY = input("Enter API Access token key:\n")
@@ -77,10 +77,10 @@ except Exception as e:
 headers ={"Authorization":"Bearer "+API_KEY}
 courseUrl = input("Enter course URL:\n")
 # courseUrl = "https://hulms.instructure.com/1923"
-if conf["saveLocation"]=="":
+if conf["save_location"]=="":
     dummypath = os.path.join(os.getcwd(), "dummy")
 else:
-    dummypath = os.path.join(conf["saveLocation"], "dummy")
+    dummypath = os.path.join(conf["save_location"], "dummy")
 if not os.path.exists(dummypath):
     os.makedirs(dummypath)
 else:
@@ -108,7 +108,7 @@ chrome_options = webdriver.ChromeOptions()
 chrome_options.add_experimental_option('prefs', profile)
 chrome_options.add_argument('--kiosk-printing')
 driver = webdriver.Chrome(options=chrome_options, executable_path=ChromeDriverManager().install())
-driver.get("https://hulms.instructure.com/")
+driver.get(API_URL)
 element = WebDriverWait(driver, 2000).until(
         EC.title_is("Dashboard")
     )
@@ -130,10 +130,10 @@ else:
     term = "Spring"
 cname = courseDict['name'] +" " + term +" " + year
 cname = sanitize(cname)
-if conf["saveLocation"] == "":
+if conf["save_location"] == "":
     parent_dir = os.getcwd()
 else:
-    parent_dir = conf["saveLocation"]
+    parent_dir = conf["save_location"]
 path = os.path.join(parent_dir, cname)
 if os.path.isdir(path):
     shutil.rmtree(path)
@@ -230,379 +230,385 @@ if assignFolder is not None:
     print("[-] Assignment Files downloaded")
     logging.info("Solutions downloaded")
 
-# Get Read only copy of all quizzes
+# # Get Read only copy of all quizzes
 quizzespath = path+"/Assessments and Sample Solutions/Quiz Copies"
 quizzes = course.get_quizzes()
 l = len(list(quizzes))
-print("Downloading Quiz Copies")
-logging.info("Downloading Quiz Copies")
-printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
-for i, q in enumerate(quizzes):
-    printProgressBar(i + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
-    if q.__dict__["published"]=="true" or q.__dict__["published"]==True:
-        url = (q.__dict__)["html_url"]
-        url+="/read_only"
+if conf["download_quiz_copies"]:
+    print("Downloading Quiz Copies")
+    logging.info("Downloading Quiz Copies")
+    printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
+    for i, q in enumerate(quizzes):
+        printProgressBar(i + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
+        if q.__dict__["published"]=="true" or q.__dict__["published"]==True:
+            url = (q.__dict__)["html_url"]
+            url+="/read_only"
+            try:
+                driver.get(url)
+                driver.execute_script("document.getElementById('questions').classList.remove('brief');")
+                time.sleep(2)
+                fn = sanitize(str((q.__dict__)["title"]))
+                driver.execute_script("window.print();")
+                rename_last_downloaded_file(dummypath, quizzespath+'/', fn +'.pdf')
+            except Exception as why:
+                sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+                logging.error(why)
+                continue
+
+    print("[-] Quizzes Copies done")
+    logging.info("Quizzes Copies done")
+
+
+
+# # Get model solution for all quizzes
+quizzesmodelpath = path + "/Assessments and Sample Solutions/Model Quizzes Solutions"   
+if conf["download_model_quizzes"]:
+    print("Downloading Quiz Canvas Solutions")
+    logging.info("Downloading Quiz Canvas Solutions")
+    printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
+    for i, q in enumerate(quizzes):
+        printProgressBar(i + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
         try:
-            driver.get(url)
-            driver.execute_script("document.getElementById('questions').classList.remove('brief');")
-            time.sleep(2)
-            fn = sanitize(str((q.__dict__)["title"]))
+            driver.get(q.__dict__["html_url"]+'/edit#questions_tab')
+            try:
+                driver.execute_script("""document.getElementById('questions').classList.remove('brief');sp = document.getElementsByClassName('correct_answer');for(var i = 0; i < sp.length; i++){sp[i].style.color = 'Green'; sp[i].style.border = 'solid #00FF00'};document.getElementById("flash_message_holder").remove();""")
+            except:
+                pass
+            time.sleep(2)  
             driver.execute_script("window.print();")
-            rename_last_downloaded_file(dummypath, quizzespath+'/', fn +'.pdf')
+            fn = sanitize(str((q.__dict__)["title"]))
+            time.sleep(1)
+            rename_last_downloaded_file(dummypath, quizzesmodelpath+'/', fn +'-solution.pdf')
         except Exception as why:
             sys.stderr.write('Chromedriver Error: {}\n'.format(why))
             logging.error(why)
             continue
-
-print("[-] Quizzes Preview done")
-logging.info("Quizzes Preview done")
-
+    print("[-] Quizzes Model Solution is done")
+    logging.info("Quizzes Model Solution is done")
 
 
-# # # # Get model solution for all quizzes
-quizzesmodelpath = path + "/Assessments and Sample Solutions/Model Quizzes Solutions"   
-print("Downloading Quiz Canvas Solutions")
-logging.info("Downloading Quiz Canvas Solutions")
-printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
-for i, q in enumerate(quizzes):
-    printProgressBar(i + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
-    try:
-        driver.get(q.__dict__["html_url"]+'/edit#questions_tab')
+# # Get 3 sample graded student submissions of each quiz
+quizsubmissionspath = path + "/Assessments and Sample Solutions/Three Sample Graded Quizzes Solutions"
+if conf["download_graded_quizzes"]:        
+    print("Downloading Three Graded Quiz Solutions")
+    logging.info("Downloading Three Graded Quiz Solutions")
+    printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
+    for i, q in enumerate(quizzes):
+        printProgressBar(i + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
+        r = requests.get(API_URL+"/api/v1/courses/" + str(courseID) + "/quizzes/"+ str(q.__dict__["id"]) + "/questions", headers=headers)
+        questions = r.json()
+        attachments = False
         try:
-            driver.execute_script("""document.getElementById('questions').classList.remove('brief');sp = document.getElementsByClassName('correct_answer');for(var i = 0; i < sp.length; i++){sp[i].style.color = 'Green'; sp[i].style.border = 'solid #00FF00'};document.getElementById("flash_message_holder").remove();""")
+            for ques in questions:
+                if ques["question_type"]=="file_upload_question":
+                    attachments = True
+                    break
         except:
             pass
-        time.sleep(2)  
-        driver.execute_script("window.print();")
-        fn = sanitize(str((q.__dict__)["title"]))
-        time.sleep(1)
-        rename_last_downloaded_file(dummypath, quizzesmodelpath+'/', fn +'-solution.pdf')
-    except Exception as why:
-        sys.stderr.write('Chromedriver Error: {}\n'.format(why))
-        logging.error(why)
-        continue
-print("[-] Quizzes Model Solution is done")
-logging.info("Quizzes Model Solution is done")
-
-
-# # # Get 3 sample graded student submissions of each quiz
-quizsubmissionspath = path + "/Assessments and Sample Solutions/Three Sample Graded Quizzes Solutions"
-print("Downloading Three Graded Quiz Solutions")
-logging.info("Downloading Three Graded Quiz Solutions")
-
-printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
-for i, q in enumerate(quizzes):
-    printProgressBar(i + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
-    r = requests.get("https://hulms.instructure.com/api/v1/courses/" + str(courseID) + "/quizzes/"+ str(q.__dict__["id"]) + "/questions", headers=headers)
-    questions = r.json()
-    attachments = False
-    for ques in questions:
-        if ques["question_type"]=="file_upload_question":
-            attachments = True
-            break
-    fn = str((q.__dict__)["title"])
-    #  Fetching file uploads    
-    if attachments:
-        try:
-            if "speed_grader_url" in q.__dict__.keys():
-                if q.__dict__["speed_grader_url"] is not None:             
-                    qassignIDindex = q.__dict__["speed_grader_url"][::-1].index("=")
-                    qassignID = int(q.__dict__["speed_grader_url"][len(q.__dict__["speed_grader_url"])-qassignIDindex:])
-                    a = (course.get_assignment(qassignID))
-                    r =requests.get("https://hulms.instructure.com/api/v1/courses/" + str(courseID) + "/assignments/"+str(qassignID)+"/submissions?include[]=submission_history", headers=headers)
-                    submissions = r.json()
-                    s = sorted([i for i in submissions if i['score']!=None], key=lambda d: d['score'])
-                    if s==[]:
-                        continue
-                    lowestsub = s[0]
-                    highestsub = s[-1]
-                    Sum = 0
-                    count = 0
-                    for i in s:
-                        if i["score"]!=None:
-                            Sum+=i["score"]
-                            count+=1
-                    average = Sum/count
-                    averagesub = min(s, key=lambda x:abs(x["score"]-average))
-                    if len(s)>2:
-                        if averagesub==lowestsub and averagesub!=highestsub:
-                            averagesub = s[1]
-                        elif averagesub!=lowestsub and averagesub==highestsub:
-                            averagesub = s[-2]
-                        flag = False
-                    currentquizsubmissionspath = quizsubmissionspath + "/" + fn
-                    os.makedirs(currentquizsubmissionspath)
-                    time.sleep(1.5)
-                    subs = [lowestsub, highestsub, averagesub]
-                    subsname = ["min", "max", "avg"]
-                    subsnameattach = ["min-attachment", "max-attachment", "avg-attachment"]
-                    for count in range(3):
-                        submissionData = subs[count]["submission_history"][-1]["submission_data"]
-                        attachedFiles = []
-                        for k in submissionData:
-                            if "attachment_ids" in k.keys():
-                                attachedFiles.extend(k["attachment_ids"])
-                        it = 1
-                        for f in attachedFiles:
-                            filee= canvas.get_file(f)
-                            Index = str(filee)[::-1].index(".")
-                            extname = str(filee)[len(str(filee))-Index:]
-                            filee.download(currentquizsubmissionspath + "/" + fn + "-" +subsnameattach[count]+"-" + str(it) + "." + extname)
-                            it+=1
-                        try:
-                            url = "https://hulms.instructure.com/courses/" + str(courseID) + "/gradebook/speed_grader?assignment_id=" + str(subs[count]["assignment_id"]) + "&student_id=" + str(subs[count]["user_id"])
-                            driver.get(url)
-                            time.sleep(2.5)  
-                            driver.execute_script("window.print();")
-                            time.sleep(0.5)
-                            rename_last_downloaded_file(dummypath, currentquizsubmissionspath+'/', fn + subsname[count]+'.pdf')
-                        except Exception as why:
-                            sys.stderr.write('Chromedriver Error: {}\n'.format(why))
-                            logging.error(why)
+        fn = str((q.__dict__)["title"])
+        #  Fetching file uploads    
+        if attachments:
+            try:
+                if "speed_grader_url" in q.__dict__.keys():
+                    if q.__dict__["speed_grader_url"] is not None:             
+                        qassignIDindex = q.__dict__["speed_grader_url"][::-1].index("=")
+                        qassignID = int(q.__dict__["speed_grader_url"][len(q.__dict__["speed_grader_url"])-qassignIDindex:])
+                        a = (course.get_assignment(qassignID))
+                        r =requests.get(API_URL+"/api/v1/courses/" + str(courseID) + "/assignments/"+str(qassignID)+"/submissions?include[]=submission_history", headers=headers)
+                        submissions = r.json()
+                        s = sorted([i for i in submissions if i['score']!=None], key=lambda d: d['score'])
+                        if s==[]:
                             continue
-        except Exception as why:
-            sys.stderr.write('Error: {}\n'.format(why))
-            logging.error(why)
-            continue
-    else:
-        submissions = q.get_submissions()
-        s = sorted([i for i in submissions if i.score!=None], key=lambda d: d.__dict__['score'])
-        if s==[]:
-            continue
-        lowestsub = s[0]
-        highestsub = s[-1]
-        Sum = 0
-        count = 0
-        for i in s:
-            if i.score!=None:
-                Sum+=i.score
-                count+=1
-        average = Sum/count
-        averagesub = min(s, key=lambda x:abs(x.score-average))
-        if len(s)>2:
-            if averagesub==lowestsub and averagesub!=highestsub:
-                averagesub = s[1]
-            elif averagesub!=lowestsub and averagesub==highestsub:
-                averagesub = s[-2]
-            flag = False
-        currentquizsubmissionspath = quizsubmissionspath + "/" + fn
-        os.makedirs(currentquizsubmissionspath)
-        time.sleep(1.5)
-        try:
-            driver.get(lowestsub.__dict__["html_url"])
-            time.sleep(0.5)  
-            driver.execute_script("window.print();")
-            time.sleep(0.5)
-            rename_last_downloaded_file(dummypath, currentquizsubmissionspath+'/', fn +'-min.pdf')
-            
-            driver.get(highestsub.__dict__["html_url"])
-            time.sleep(0.5)  
-            driver.execute_script("window.print();")
-            time.sleep(0.5)
-            rename_last_downloaded_file(dummypath, currentquizsubmissionspath+'/', fn +'-max.pdf')
-            driver.get(averagesub.__dict__["html_url"])
-            time.sleep(0.5)  
-            driver.execute_script("window.print();")
-            time.sleep(0.5)
-            rename_last_downloaded_file(dummypath, currentquizsubmissionspath+'/',fn +'-avg.pdf')
-        except Exception as why:
-            sys.stderr.write('Chromedriver Error: {}\n'.format(why))
-            logging.error(why)
-            continue
-print("[-] Quizzes 3 Graded Assessments are done")
-logging.info("[-] Quizzes 3 Graded Assessments are done")
+                        lowestsub = s[0]
+                        highestsub = s[-1]
+                        Sum = 0
+                        count = 0
+                        for i in s:
+                            if i["score"]!=None:
+                                Sum+=i["score"]
+                                count+=1
+                        average = Sum/count
+                        averagesub = min(s, key=lambda x:abs(x["score"]-average))
+                        if len(s)>2:
+                            if averagesub==lowestsub and averagesub!=highestsub:
+                                averagesub = s[1]
+                            elif averagesub!=lowestsub and averagesub==highestsub:
+                                averagesub = s[-2]
+                            flag = False
+                        currentquizsubmissionspath = quizsubmissionspath + "/" + fn
+                        os.makedirs(currentquizsubmissionspath)
+                        time.sleep(1.5)
+                        subs = [lowestsub, highestsub, averagesub]
+                        subsname = ["min", "max", "avg"]
+                        subsnameattach = ["min-attachment", "max-attachment", "avg-attachment"]
+                        for count in range(3):
+                            submissionData = subs[count]["submission_history"][-1]["submission_data"]
+                            attachedFiles = []
+                            for k in submissionData:
+                                if "attachment_ids" in k.keys():
+                                    attachedFiles.extend(k["attachment_ids"])
+                            it = 1
+                            for f in attachedFiles:
+                                filee= canvas.get_file(f)
+                                Index = str(filee)[::-1].index(".")
+                                extname = str(filee)[len(str(filee))-Index:]
+                                filee.download(currentquizsubmissionspath + "/" + fn + "-" +subsnameattach[count]+"-" + str(it) + "." + extname)
+                                it+=1
+                            try:
+                                url = API_URL+"/courses/" + str(courseID) + "/gradebook/speed_grader?assignment_id=" + str(subs[count]["assignment_id"]) + "&student_id=" + str(subs[count]["user_id"])
+                                driver.get(url)
+                                time.sleep(2.5)  
+                                driver.execute_script("window.print();")
+                                time.sleep(0.5)
+                                rename_last_downloaded_file(dummypath, currentquizsubmissionspath+'/', fn + subsname[count]+'.pdf')
+                            except Exception as why:
+                                sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+                                logging.error(why)
+                                continue
+            except Exception as why:
+                sys.stderr.write('Error: {}\n'.format(why))
+                logging.error(why)
+                continue
+        else:
+            submissions = q.get_submissions()
+            s = sorted([i for i in submissions if i.score!=None], key=lambda d: d.__dict__['score'])
+            if s==[]:
+                continue
+            lowestsub = s[0]
+            highestsub = s[-1]
+            Sum = 0
+            count = 0
+            for i in s:
+                if i.score!=None:
+                    Sum+=i.score
+                    count+=1
+            average = Sum/count
+            averagesub = min(s, key=lambda x:abs(x.score-average))
+            if len(s)>2:
+                if averagesub==lowestsub and averagesub!=highestsub:
+                    averagesub = s[1]
+                elif averagesub!=lowestsub and averagesub==highestsub:
+                    averagesub = s[-2]
+                flag = False
+            currentquizsubmissionspath = quizsubmissionspath + "/" + fn
+            os.makedirs(currentquizsubmissionspath)
+            time.sleep(1.5)
+            try:
+                driver.get(lowestsub.__dict__["html_url"])
+                time.sleep(0.5)  
+                driver.execute_script("window.print();")
+                time.sleep(0.5)
+                rename_last_downloaded_file(dummypath, currentquizsubmissionspath+'/', fn +'-min.pdf')
+                
+                driver.get(highestsub.__dict__["html_url"])
+                time.sleep(0.5)  
+                driver.execute_script("window.print();")
+                time.sleep(0.5)
+                rename_last_downloaded_file(dummypath, currentquizsubmissionspath+'/', fn +'-max.pdf')
+                driver.get(averagesub.__dict__["html_url"])
+                time.sleep(0.5)  
+                driver.execute_script("window.print();")
+                time.sleep(0.5)
+                rename_last_downloaded_file(dummypath, currentquizsubmissionspath+'/',fn +'-avg.pdf')
+            except Exception as why:
+                sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+                logging.error(why)
+                continue
+    print("[-] Quizzes 3 Graded Assessments are done")
+    logging.info("[-] Quizzes 3 Graded Assessments are done")
 
 
 # # Get read only copy for an assignments
 assignpath = path+"/Assessments and Sample Solutions/Assignment Copies"
 assigns = course.get_assignments()  
 l = len(list(assigns))
-print("Downloading Assignment Copies")
-logging.info("Downloading Assignment Copies")
-
-printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
-for it, i in enumerate(assigns):
-    printProgressBar(it + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
-    if i.__dict__["is_quiz_assignment"]==False and "online_quiz" not in i.__dict__["submission_types"]:
-        url = i.__dict__["html_url"]
-        t = sanitize(str(i.__dict__["name"]))
-        t+='.pdf'
-        try:
-            driver.get(url)
-            time.sleep(1)  
-            driver.execute_script("window.print();")
-            time.sleep(1)
-            rename_last_downloaded_file(dummypath, assignpath+'/', t)
-        except Exception as why:
-            sys.stderr.write('Chromedriver Error: {}\n'.format(why))
-            logging.error(why)
-            continue       
-print("[-] Assignments Preview Copies Done")
-logging.info("Assignments Preview Copies Done")
+if conf["download_assignment_copies"]:
+    print("Downloading Assignment Copies")
+    logging.info("Downloading Assignment Copies")
+    printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
+    for it, i in enumerate(assigns):
+        printProgressBar(it + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
+        if i.__dict__["is_quiz_assignment"]==False and "online_quiz" not in i.__dict__["submission_types"]:
+            url = i.__dict__["html_url"]
+            t = sanitize(str(i.__dict__["name"]))
+            t+='.pdf'
+            try:
+                driver.get(url)
+                time.sleep(1)  
+                driver.execute_script("window.print();")
+                time.sleep(1)
+                rename_last_downloaded_file(dummypath, assignpath+'/', t)
+            except Exception as why:
+                sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+                logging.error(why)
+                continue       
+    print("[-] Assignments Preview Copies Done")
+    logging.info("Assignments Preview Copies Done")
 
 
 # # Get 3 submissions for each assignments
 assignsubmissionspath = path + "/Assessments and Sample Solutions/Three Sample Graded Assignments Solutions"
-print("Downloading Assignment Submissions")
-logging.info("Downloading Assignment Submissions")
-printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
-for it, a in enumerate(assigns):
-    printProgressBar(it + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
-    if (a.__dict__['is_quiz_assignment']==False) and "online_quiz" not in a.__dict__["submission_types"]:
-        submissions = a.get_submissions()
-        s = [] 
-        for x in submissions:
-            if x.__dict__["score"]!=None:
-                s.append(x)
-        if len(s)==0: continue
-        s.sort(key=lambda x: x.__dict__["score"])
-        lowestsub = s[0]
-        highestsub = s[-1]
-        Sum = 0
-        count = 0
-        for i in s:
-            if i.__dict__["score"]!=None:
-                Sum+=i.__dict__["score"]
-                count+=1
-        average = Sum/count
-        averagesub = min(s, key=lambda x:abs(x.__dict__["score"]-average))
-        if len(s)>2:
-            if averagesub==lowestsub and averagesub!=highestsub:
-                averagesub = s[1]
-            elif averagesub!=lowestsub and averagesub==highestsub:
-                averagesub = s[-2]
-        subs = [lowestsub, highestsub, averagesub]
-        subsname = ["min", "max", "avg"]
-        aname = sanitize(str((a.__dict__)["name"])) 
-        currentassignsubmissionspath = assignsubmissionspath + "/" + aname
-        try:
-            if not os.path.exists(currentassignsubmissionspath):
-                os.makedirs(currentassignsubmissionspath)
-                time.sleep(1.5)
-        except Exception as why:
-                sys.stderr.write('Path creation: {}\n'.format(why))
-                logging.error(why)
-                continue
-        for count in range(3):
-            if subs[count].__dict__["submission_type"]=="online_text_entry":
-                try:
-                    urlstr = subs[count].__dict__["preview_url"][:subs[count].__dict__["preview_url"].find("?preview")]
-                    driver.get(urlstr)
-                    time.sleep(1)
-                    driver.execute_script("s = document.querySelectorAll('.submission-details-comments .comments');for (var i=0;i<s.length;i++)s[i].style.overflow = 'visible';")
-                    time.sleep(1)  
-                    driver.execute_script("window.print();")
-                    time.sleep(1)
-                    rename_last_downloaded_file(dummypath, currentassignsubmissionspath +'/', aname+'-'+subsname[count]+'.pdf')
-
-                    if "rubric" in a.__dict__.keys():
+if conf["download_graded_assignments"]:
+    print("Downloading Assignment Submissions")
+    logging.info("Downloading Assignment Submissions")
+    printProgressBar(0, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
+    for it, a in enumerate(assigns):
+        printProgressBar(it + 1, l, prefix = 'Progress:', suffix = 'Complete', length = 50)
+        if (a.__dict__['is_quiz_assignment']==False) and "online_quiz" not in a.__dict__["submission_types"]:
+            submissions = a.get_submissions()
+            s = [] 
+            for x in submissions:
+                if x.__dict__["score"]!=None:
+                    s.append(x)
+            if len(s)==0: continue
+            s.sort(key=lambda x: x.__dict__["score"])
+            lowestsub = s[0]
+            highestsub = s[-1]
+            Sum = 0
+            count = 0
+            for i in s:
+                if i.__dict__["score"]!=None:
+                    Sum+=i.__dict__["score"]
+                    count+=1
+            average = Sum/count
+            averagesub = min(s, key=lambda x:abs(x.__dict__["score"]-average))
+            if len(s)>2:
+                if averagesub==lowestsub and averagesub!=highestsub:
+                    averagesub = s[1]
+                elif averagesub!=lowestsub and averagesub==highestsub:
+                    averagesub = s[-2]
+            subs = [lowestsub, highestsub, averagesub]
+            subsname = ["min", "max", "avg"]
+            aname = sanitize(str((a.__dict__)["name"])) 
+            currentassignsubmissionspath = assignsubmissionspath + "/" + aname
+            try:
+                if not os.path.exists(currentassignsubmissionspath):
+                    os.makedirs(currentassignsubmissionspath)
+                    time.sleep(1.5)
+            except Exception as why:
+                    sys.stderr.write('Path creation: {}\n'.format(why))
+                    logging.error(why)
+                    continue
+            for count in range(3):
+                if subs[count].__dict__["submission_type"]=="online_text_entry":
+                    try:
+                        urlstr = subs[count].__dict__["preview_url"][:subs[count].__dict__["preview_url"].find("?preview")]
                         driver.get(urlstr)
                         time.sleep(1)
-                        driver.execute_script("s = document.getElementById('rubric_holder');s.style.overflow = 'visible';")
+                        driver.execute_script("s = document.querySelectorAll('.submission-details-comments .comments');for (var i=0;i<s.length;i++)s[i].style.overflow = 'visible';")
                         time.sleep(1)  
                         driver.execute_script("window.print();")
                         time.sleep(1)
-                        rename_last_downloaded_file(dummypath, currentassignsubmissionspath +'/', aname+'-'+subsname[count]+' - rubric.pdf')
+                        rename_last_downloaded_file(dummypath, currentassignsubmissionspath +'/', aname+'-'+subsname[count]+'.pdf')
 
-                except Exception as why:
-                    sys.stderr.write('Chromedriver Error: {}\n'.format(why))
-                    logging.error(why)
-                    continue
-            elif subs[count].__dict__["submission_type"]=="discussion_topic":
-                try:
-                    driver.get(subs[count].__dict__["preview_url"])
-                    time.sleep(1)  
-                    driver.execute_script("window.print();")
-                    time.sleep(1)
-                    rename_last_downloaded_file(dummypath, currentassignsubmissionspath +'/', aname+'-'+subsname[count]+'.pdf')
-                except Exception as why:
-                    sys.stderr.write('Chromedriver Error: {}\n'.format(why))
-                    logging.error(why)
-                    continue
-            elif subs[count].__dict__["submission_type"]=="online_upload":
-                attachments = subs[count].__dict__["attachments"]
-                c = 1
-                for j in attachments:
-                    try:
-                        url = j["url"]
-                        r = requests.get(url, allow_redirects=True)
-                        Index = j["filename"][::-1].index(".")
-                        extname = j["filename"][len(j["filename"])-Index:]
-                        if "preview_url" not in j.keys() or j["preview_url"] is None:
-                            open(currentassignsubmissionspath+"/"+aname + "-" + subsname[count] +" " + str(c) + "."+extname, 'wb').write(r.content)
-                        elif "preview_url" in j.keys():
-                            if j["preview_url"] is not None:
-                                r =requests.get(url=API_URL + j["preview_url"], allow_redirects=False, headers=headers)
-                                i1 = r.text.find("http")
-                                i2 = r.text.find("redirected")
-                                url = r.text[i1:i2-2]
-                                i1 = url.find("view?")
-                                url = url[:i1]
-                                url+="annotated.pdf"
-                                r = requests.post(url, allow_redirects=True, headers=headers)
-                                r = requests.get(url+"/is_ready", allow_redirects=True, headers=headers)
-                                r = requests.get(url, allow_redirects=True, headers=headers)
+                        if "rubric" in a.__dict__.keys():
+                            driver.get(urlstr)
+                            time.sleep(1)
+                            driver.execute_script("s = document.getElementById('rubric_holder');s.style.overflow = 'visible';")
+                            time.sleep(1)  
+                            driver.execute_script("window.print();")
+                            time.sleep(1)
+                            rename_last_downloaded_file(dummypath, currentassignsubmissionspath +'/', aname+'-'+subsname[count]+' - rubric.pdf')
 
-                                open(currentassignsubmissionspath+"/"+aname + "-" + subsname[count] +" " + str(c) + ' -annotated.pdf', 'wb').write(r.content)
-
-                        c+=1
                     except Exception as why:
                         sys.stderr.write('Chromedriver Error: {}\n'.format(why))
                         logging.error(why)
                         continue
-
-                c = 0
-                try:
-                    urlstr = subs[count].__dict__["preview_url"][:subs[count].__dict__["preview_url"].find("?preview")]
-                    driver.get(urlstr)
-                    time.sleep(1)  
-                    driver.execute_script("s = document.querySelectorAll('.submission-details-comments .comments');for (var i=0;i<s.length;i++)s[i].style.overflow = 'visible';")
-                    time.sleep(1)  
-                    driver.execute_script("window.print();")
-                    time.sleep(1)
-                    rename_last_downloaded_file(dummypath, currentassignsubmissionspath +'/', aname+'-'+subsname[count]+'.pdf')
-
-                    if "rubric" in a.__dict__.keys():
-                        driver.get(urlstr)
-                        time.sleep(1)
-                        driver.execute_script("r = document.getElementsByClassName('icon-rubric')[0];r.click();")
-                        time.sleep(1)
-                        driver.execute_script("s = document.getElementById('rubric_holder');s.style.overflow = 'visible';")
+                elif subs[count].__dict__["submission_type"]=="discussion_topic":
+                    try:
+                        driver.get(subs[count].__dict__["preview_url"])
                         time.sleep(1)  
                         driver.execute_script("window.print();")
                         time.sleep(1)
-                        rename_last_downloaded_file(dummypath, currentassignsubmissionspath +'/', aname+'-'+subsname[count]+' - rubric.pdf')
+                        rename_last_downloaded_file(dummypath, currentassignsubmissionspath +'/', aname+'-'+subsname[count]+'.pdf')
+                    except Exception as why:
+                        sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+                        logging.error(why)
+                        continue
+                elif subs[count].__dict__["submission_type"]=="online_upload":
+                    attachments = subs[count].__dict__["attachments"]
+                    c = 1
+                    for j in attachments:
+                        try:
+                            url = j["url"]
+                            r = requests.get(url, allow_redirects=True)
+                            Index = j["filename"][::-1].index(".")
+                            extname = j["filename"][len(j["filename"])-Index:]
+                            if "preview_url" not in j.keys() or j["preview_url"] is None:
+                                open(currentassignsubmissionspath+"/"+aname + "-" + subsname[count] +" " + str(c) + "."+extname, 'wb').write(r.content)
+                            elif "preview_url" in j.keys():
+                                if j["preview_url"] is not None:
+                                    r =requests.get(url=API_URL + j["preview_url"], allow_redirects=False, headers=headers)
+                                    i1 = r.text.find("http")
+                                    i2 = r.text.find("redirected")
+                                    url = r.text[i1:i2-2]
+                                    i1 = url.find("view?")
+                                    url = url[:i1]
+                                    url+="annotated.pdf"
+                                    r = requests.post(url, allow_redirects=True, headers=headers)
+                                    r = requests.get(url+"/is_ready", allow_redirects=True, headers=headers)
+                                    r = requests.get(url, allow_redirects=True, headers=headers)
 
-                except Exception as why:
-                    sys.stderr.write('Chromedriver Error: {}\n'.format(why))
-                    logging.error(why)
-                    continue
-            elif subs[count].__dict__["submission_type"]=="online_url":
-                try:
-                    open(currentassignsubmissionspath+"/"+aname+ "-" + subsname[count] +".txt", 'w').write(subs[count].__dict__["url"])
-                except Exception as why:
-                    sys.stderr.write('Chromedriver Error: {}\n'.format(why))
-                    logging.error(why)
-                    continue
-            else:
-                try:
-                    urlstr = subs[count].__dict__["preview_url"][:subs[count].__dict__["preview_url"].find("?preview")]
-                    driver.get(urlstr)
-                    time.sleep(1)  
-                    driver.execute_script("window.print();")
-                    time.sleep(1)
-                    rename_last_downloaded_file(dummypath, currentassignsubmissionspath +'/', aname+'-'+subsname[count]+'.pdf')
-                except Exception as why:
-                    sys.stderr.write('Chromedriver Error: {}\n'.format(why))
-                    logging.error(why)
-                    continue
-    
-print("[-] Assignment graded assessments are done")
-logging.info("Assignment graded assessments are done")                
+                                    open(currentassignsubmissionspath+"/"+aname + "-" + subsname[count] +" " + str(c) + ' -annotated.pdf', 'wb').write(r.content)
+
+                            c+=1
+                        except Exception as why:
+                            sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+                            logging.error(why)
+                            continue
+
+                    c = 0
+                    try:
+                        urlstr = subs[count].__dict__["preview_url"][:subs[count].__dict__["preview_url"].find("?preview")]
+                        driver.get(urlstr)
+                        time.sleep(1)  
+                        driver.execute_script("s = document.querySelectorAll('.submission-details-comments .comments');for (var i=0;i<s.length;i++)s[i].style.overflow = 'visible';")
+                        time.sleep(1)  
+                        driver.execute_script("window.print();")
+                        time.sleep(1)
+                        rename_last_downloaded_file(dummypath, currentassignsubmissionspath +'/', aname+'-'+subsname[count]+'.pdf')
+
+                        if "rubric" in a.__dict__.keys():
+                            driver.get(urlstr)
+                            time.sleep(1)
+                            driver.execute_script("r = document.getElementsByClassName('icon-rubric')[0];r.click();")
+                            time.sleep(1)
+                            driver.execute_script("s = document.getElementById('rubric_holder');s.style.overflow = 'visible';")
+                            time.sleep(1)  
+                            driver.execute_script("window.print();")
+                            time.sleep(1)
+                            rename_last_downloaded_file(dummypath, currentassignsubmissionspath +'/', aname+'-'+subsname[count]+' - rubric.pdf')
+
+                    except Exception as why:
+                        sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+                        logging.error(why)
+                        continue
+                elif subs[count].__dict__["submission_type"]=="online_url":
+                    try:
+                        open(currentassignsubmissionspath+"/"+aname+ "-" + subsname[count] +".txt", 'w').write(subs[count].__dict__["url"])
+                    except Exception as why:
+                        sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+                        logging.error(why)
+                        continue
+                else:
+                    try:
+                        urlstr = subs[count].__dict__["preview_url"][:subs[count].__dict__["preview_url"].find("?preview")]
+                        driver.get(urlstr)
+                        time.sleep(1)  
+                        driver.execute_script("window.print();")
+                        time.sleep(1)
+                        rename_last_downloaded_file(dummypath, currentassignsubmissionspath +'/', aname+'-'+subsname[count]+'.pdf')
+                    except Exception as why:
+                        sys.stderr.write('Chromedriver Error: {}\n'.format(why))
+                        logging.error(why)
+                        continue
+        
+    print("[-] Assignment graded assessments are done")
+    logging.info("Assignment graded assessments are done")                
 
 
 
-if conf["downloadDiscussions"]== "True":
+if conf["download_discussions"]== "True":
     discussionspath = path+"/Discussions"
     os.mkdir(discussionspath)
     discussions  = course.get_discussion_topics()
