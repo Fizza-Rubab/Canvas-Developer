@@ -95,10 +95,17 @@ if they are named as follows.
 \section{Configuration}
 A json formatted configuration file has been added to the repository to allow flexibility to the user. The following keys/options can be adjusted as per your preference.
 \begin{enumerate}
-\item \texttt{saveLocation} value can be changed to the directory where you want the coursefile folder to download.
-\item \texttt{downloadDiscussions} can be set to  True or False to enable or disable the download of discussion topics.
 \item \texttt{API\_KEY} can be replaced to avoid entering API\_KEY as an input to the program through terminal for each run.
-\item \texttt{files\_to\_download} value is a list containing all the files you want to download from your canvas course's files folder anywhere in the file heirarchy. Append any specific files you want to download. If you want to export all files and modules, append \texttt{"*"} to the list.
+\item \texttt{API\_URL} is set to \url{https://hulms.instructure.com}. This can be replaced if LMS is deployed to some other domain/site.
+\item \texttt{LOGIN\_URL} is set to \url{https://hulms.instructure.com}. This can be replaced if the login portal to LMS is deployed to some other domain/site.
+\item \texttt{save\_location} value can be changed to the directory where you want the coursefile folder to download.
+\item \texttt{files\_to\_download} value is a list containing all the files you want to download from your canvas course's files folder anywhere in the file heirarchy. Append any specific files you want to download. If you want to export all files and modules, append \texttt{"*"} to the list. This will download a zip file in the main folder.
+\item \texttt{download\_discussions} can be set to  True or False to enable or disable the download of discussion topics.
+\item \texttt{download\_quiz\_copies} can be set to  True or False to enable or disable the download of quiz pdfs.
+\item \texttt{download\_model\_quizzes} can be set to  True or False to enable or disable the download of quiz solutions entered on LMS by the instructor.
+\item \texttt{download\_graded\_quizzes} can be set to  True or False to enable or disable the download of minimum, maximum and average solutions of each quiz.
+\item \texttt{download\_assignment\_copies} can be set to  True or False to enable or disable the download of assignment pdfs.
+\item \texttt{download\_graded\_assignments} can be set to  True or False to enable or disable the download of download of minimum, maximum and average solutions of each assignment.
 \end{enumerate}
 
 \section{Running the file}
