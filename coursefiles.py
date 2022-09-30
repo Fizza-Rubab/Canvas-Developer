@@ -11,6 +11,7 @@ import os
 
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
@@ -33,12 +34,12 @@ def rename_last_downloaded_file(dummy_dir, destination_dir, new_file_name):
             This function is going to loop as long as the directory is empty.
         """
         while not os.listdir(dummy_dir):
-            time.sleep(2)
+            time.sleep(3)
         s = max([dummy_dir+"/"+f for f in os.listdir(dummy_dir)], key=os.path.getctime)
         return s
 
     while '.part' in get_last_downloaded_file_path(dummy_dir):
-        time.sleep(2)
+        time.sleep(3)
     
     shutil.move(get_last_downloaded_file_path(dummy_dir), destination_dir+"/"+new_file_name)
 
@@ -108,7 +109,7 @@ profile = {'printing.print_preview_sticky_settings.appState': json.dumps(appStat
 chrome_options = webdriver.ChromeOptions()
 chrome_options.add_experimental_option('prefs', profile)
 chrome_options.add_argument('--kiosk-printing')
-driver = webdriver.Chrome(options=chrome_options, executable_path=ChromeDriverManager().install())
+driver = webdriver.Chrome(options=chrome_options, service=Service(ChromeDriverManager().install()))
 driver.get(LOGIN_URL)
 element = WebDriverWait(driver, 2000).until(
         EC.title_is("Dashboard")
